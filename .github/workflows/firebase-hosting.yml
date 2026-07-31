@@ -1,11 +1,10 @@
-name: Deploy to Firebase Hosting and Functions
+Name: Deploy to Firebase Hosting and Functions
 
 on:
   push:
     branches:
       - main
       - master
-
 
 jobs:
   build_and_deploy:
@@ -29,12 +28,12 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      # 3. Service Account JSON से ऑथेंटिकेट करके डिप्लॉय करें
+      # 3. Service Account JSON से ऑथेंटिकेट करके डिप्लॉय करें (--force के साथ)
       - name: Deploy to Firebase
         env:
           GCP_SA_KEY: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
         run: |
           echo "$GCP_SA_KEY" > key.json
           export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/key.json"
-          firebase deploy --only functions,hosting --project push-notifaction-c3460 --non-interactive
+          firebase deploy --only functions,hosting --project push-notifaction-c3460 --force --non-interactive
           rm key.json
