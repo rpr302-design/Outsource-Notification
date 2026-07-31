@@ -1,10 +1,10 @@
 {
   "name": "functions",
-  "description": "Firebase Cloud Functions for Push Notifications",
   "scripts": {
+    "lint": "eslint .",
     "serve": "firebase serve --only functions",
     "shell": "firebase functions:shell",
-    "start": "npm run shell",
+    "start": "firebase shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
