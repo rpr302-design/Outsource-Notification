@@ -3,58 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Outsource Advanced Notification Hub</title>
+    <title>MP Outsource Media Hub</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Custom Smooth Scrollbar */
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .ai-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .wa-bg { background-color: #efeae2; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-800 h-screen flex flex-col justify-center items-center font-sans antialiased">
+<body class="bg-slate-900 text-slate-800 h-screen flex flex-col justify-center items-center font-sans">
 
     <!-- App Container -->
-    <div class="w-full max-w-md bg-slate-100 h-full sm:h-[720px] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-slate-700/50">
+    <div class="w-full max-w-md bg-white h-full sm:h-[720px] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-slate-700/50">
+
+        <!-- Notification Blocked Warning Banner -->
+        <div id="blocked-banner" class="hidden bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md z-20">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-bell-slash text-base"></i>
+                <span>नोटिफिकेशन ब्लॉक हैं! सभी सूचनाएँ पाने के लिए Browser Setting में जा कर Allow करें।</span>
+            </div>
+            <button onclick="checkAndPromptNotificationPermission()" class="bg-slate-900 px-2 py-1 rounded text-[10px] font-bold">Unblock</button>
+        </div>
 
         <!-- 1. Registration / Login Screen -->
-        <div id="registration-screen" class="p-8 flex flex-col justify-between h-full ai-gradient text-white">
+        <div id="registration-screen" class="p-8 flex flex-col justify-between h-full bg-slate-900 text-white">
             <div class="text-center mt-6">
-                <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 to-teal-400 p-0.5 shadow-lg mx-auto mb-4">
-                    <div class="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center">
-                        <i class="fas fa-robot text-3xl text-teal-400"></i>
-                    </div>
+                <div class="w-20 h-20 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-comments text-3xl text-teal-400"></i>
                 </div>
-                <h2 class="text-2xl font-black tracking-tight text-white">Outsource Hub</h2>
-                <p class="text-xs text-slate-400 mt-1">एडवांस सूचना व एआई नोटिफिकेशन ग्रुप</p>
+                <h2 class="text-2xl font-bold tracking-tight text-white">Outsource Connect</h2>
+                <p class="text-xs text-slate-400 mt-1">1 मोबाइल नंबर = 1 ही एक्टिव अकाउंट</p>
             </div>
 
             <form id="login-form" class="space-y-4 my-auto">
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">आपका नाम</label>
-                    <div class="relative">
-                        <i class="fas fa-user absolute left-3 top-3.5 text-slate-500 text-sm"></i>
-                        <input type="text" id="user-name" required placeholder="जैसे: रोशन प्रजापति" 
-                               class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none transition">
-                    </div>
+                    <input type="text" id="user-name" required placeholder="जैसे: रोशन प्रजापति" 
+                           class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर</label>
-                    <div class="relative">
-                        <i class="fas fa-phone absolute left-3 top-3.5 text-slate-500 text-sm"></i>
-                        <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर" 
-                               class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none transition">
-                    </div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर (10 अंक)</label>
+                    <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर" 
+                           class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
                 </div>
 
                 <button type="submit" id="submit-btn"
-                        class="w-full bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-600 hover:to-indigo-700 text-white font-bold py-3.5 rounded-xl transition duration-200 shadow-lg shadow-teal-500/20 flex justify-center items-center text-sm">
-                    <span>ग्रुप से जुड़ें</span> <i class="fas fa-bolt ml-2"></i>
+                        class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center text-sm transition">
+                    <span>साइन इन करें</span> <i class="fas fa-arrow-right ml-2"></i>
                 </button>
             </form>
 
@@ -63,77 +62,70 @@
             </div>
         </div>
 
-        <!-- 2. Main Hub / Chat Screen -->
-        <div id="chat-screen" class="hidden flex-col h-full bg-slate-200">
+        <!-- 2. Main Media Feed / Chat Screen -->
+        <div id="chat-screen" class="hidden flex-col h-full wa-bg">
             
-            <!-- AI Style Header -->
-            <div class="ai-gradient text-white px-4 py-3.5 flex items-center justify-between shadow-md z-10">
+            <!-- WhatsApp Style Header -->
+            <div class="bg-teal-800 text-white px-4 py-3 flex items-center justify-between shadow-md z-10">
                 <div class="flex items-center space-x-3">
-                    <div class="relative">
-                        <div class="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-400 font-bold text-lg">
-                            <i class="fas fa-bullhorn"></i>
-                        </div>
-                        <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"></span>
+                    <div class="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center font-bold text-lg border border-white/20">
+                        <i class="fas fa-users"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-sm tracking-wide text-white">MP Outsource Hub</h3>
-                        <div class="flex items-center space-x-2 text-[11px] text-slate-400">
+                        <h3 class="font-bold text-sm text-white">MP Outsource Announcement</h3>
+                        <div class="flex items-center space-x-2 text-[11px] text-teal-200">
                             <span id="welcome-user">यूज़र</span>
                             <span>•</span>
-                            <span id="user-count-badge" class="bg-teal-500/10 text-teal-300 px-2 py-0.5 rounded-md text-[10px] font-medium border border-teal-500/20">
-                                0 सदस्य
-                            </span>
+                            <span id="user-count-badge" class="bg-teal-900 px-2 py-0.5 rounded-full text-[10px]">0 Users</span>
                         </div>
                     </div>
                 </div>
-                <button id="logout-btn" title="लॉगआउट" class="text-slate-400 hover:text-rose-400 text-sm p-2 rounded-lg transition">
-                    <i class="fas fa-power-off text-base"></i>
+                <button id="logout-btn" title="लॉगआउट" class="text-teal-200 hover:text-white text-sm p-2">
+                    <i class="fas fa-sign-out-alt text-base"></i>
                 </button>
             </div>
 
-            <!-- Notifications Stream Container -->
-            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
-                <div class="text-center text-[11px] text-slate-600 bg-white/60 backdrop-blur-sm border border-slate-300 p-2.5 rounded-xl my-2 shadow-sm">
-                    📢 यह केवल एडमिन ब्रॉडकास्ट चैनल है। नीचे उत्तर (Reply) दे सकते हैं।
-                </div>
+            <!-- Messages Stream -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3">
                 <div id="loading-spinner" class="text-center py-10 text-slate-500">
-                    <i class="fas fa-brain fa-spin text-3xl text-teal-500"></i>
-                    <p class="text-xs mt-3 font-medium">सूचनाएं लोड हो रही हैं...</p>
+                    <i class="fas fa-circle-notch fa-spin text-2xl text-teal-600"></i>
+                    <p class="text-xs mt-2">मैसेज लोड हो रहे हैं...</p>
                 </div>
             </div>
 
-            <!-- Advanced Admin Input Box -->
-            <div id="admin-input-box" class="hidden bg-white p-3 border-t border-slate-300 flex-col space-y-2 shadow-2xl z-10">
-                <input type="text" id="admin-msg-title" placeholder="📌 शीर्षक (Title)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 font-bold">
+            <!-- Admin Multi-Media Sender Box -->
+            <div id="admin-input-box" class="hidden bg-white p-3 border-t border-slate-300 flex-col space-y-2 shadow-2xl">
+                <input type="text" id="admin-msg-title" placeholder="📌 शीर्षक (Title)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 font-bold">
                 
-                <textarea id="admin-msg-body" rows="2" placeholder="💬 मुख्य सूचना संदेश..." class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"></textarea>
+                <textarea id="admin-msg-body" rows="2" placeholder="💬 मुख्य संदेश लिखें..." class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"></textarea>
 
-                <!-- Attachment Options (Image, Video, File, Link) -->
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <input type="url" id="admin-media-url" placeholder="🔗 लिंक या इमेज/वीडियो URL" class="px-2 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-teal-500 text-[11px]">
-                    <select id="admin-media-type" class="px-2 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-teal-500 text-[11px] bg-slate-50 font-medium">
-                        <option value="none">कोई अटैचमेंट नहीं</option>
-                        <option value="image">🖼️ इमेज (Picture)</option>
-                        <option value="video">🎥 वीडियो (MP4/YouTube)</option>
-                        <option value="file">📄 फ़ाइल/डॉक्यूमेंट (PDF/Doc)</option>
+                <!-- Media Link & Select Option -->
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="url" id="admin-media-url" placeholder="🔗 लिंक या फ़ाइल/वीडियो URL" class="px-2 py-1.5 border border-slate-300 rounded-lg text-xs">
+                    <select id="admin-media-type" class="px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-slate-50 font-medium">
+                        <option value="none">कोई मीडिया नहीं</option>
+                        <option value="image">🖼️ फोटो (Image)</option>
+                        <option value="video">🎥 वीडियो (Video)</option>
+                        <option value="pdf">📄 PDF फ़ाइल</option>
+                        <option value="excel">📊 Excel/Doc फ़ाइल</option>
                         <option value="link">🌐 वेब लिंक (URL Link)</option>
                     </select>
                 </div>
 
-                <button id="send-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-teal-400 font-bold py-2.5 rounded-xl text-xs flex justify-center items-center shadow-lg transition">
-                    <i class="fas fa-paper-plane mr-2"></i> ब्रॉडकास्ट नोटिफिकेशन भेजें
+                <button id="send-btn" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-xl text-xs flex justify-center items-center shadow">
+                    <i class="fas fa-paper-plane mr-2"></i> ब्रॉडकास्ट मीडिया पोस्ट करें
                 </button>
             </div>
 
-            <!-- Normal User Footer -->
-            <div id="user-footer" class="bg-white/80 backdrop-blur-sm px-4 py-2.5 text-center text-[11px] text-slate-600 border-t border-slate-300">
-                <i class="fas fa-shield-halved text-teal-600 mr-1"></i> केवल एडमिन ही नई सूचना पोस्ट कर सकते हैं।
+            <!-- User Footer -->
+            <div id="user-footer" class="bg-slate-200 px-4 py-2.5 text-center text-[11px] text-slate-600 border-t">
+                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन मीडिया फ़ाइलें पोस्ट कर सकते हैं।
             </div>
         </div>
 
     </div>
 
-    <!-- Firebase v10 SDK Scripts -->
+    <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -145,26 +137,15 @@
             projectId: "push-notifaction-c3460",
             storageBucket: "push-notifaction-c3460.firebasestorage.app",
             messagingSenderId: "649136234508",
-            appId: "1:649136234508:web:39b8e06150890d360ace29",
-            measurementId: "G-5W02WYP1ZT"
+            appId: "1:649136234508:web:39b8e06150890d360ace29"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const messaging = getMessaging(app);
 
-        // एडमिन नंबर
         const ADMIN_PHONE_NUMBER = "9993332211"; 
-
         let currentUser = null;
-
-        // Service Worker Reg
-        let swRegistration = null;
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/firebase-messaging-sw.js')
-                .then(reg => { swRegistration = reg; })
-                .catch(err => console.error('SW Fail:', err));
-        }
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -179,22 +160,32 @@
         const adminInputBox = document.getElementById('admin-input-box');
         const userFooter = document.getElementById('user-footer');
         const sendBtn = document.getElementById('send-btn');
+        const blockedBanner = document.getElementById('blocked-banner');
 
-        // Auto Login Check
+        // Auto Login
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) { showChatScreen(savedUser); }
 
-        async function getFCMToken() {
-            try {
+        // Blocked Permission Re-check Banner Logic
+        window.checkAndPromptNotificationPermission = async function() {
+            if (Notification.permission === 'denied') {
+                blockedBanner.classList.remove('hidden');
+            } else if (Notification.permission === 'default') {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    const reg = swRegistration || await navigator.serviceWorker.ready;
-                    return await getToken(messaging, { serviceWorkerRegistration: reg }) || "no_token";
+                    blockedBanner.classList.add('hidden');
+                } else {
+                    blockedBanner.classList.remove('hidden');
                 }
-            } catch (err) { console.log("Token error:", err); }
-            return "no_permission";
-        }
+            } else {
+                blockedBanner.classList.add('hidden');
+            }
+        };
 
+        // Every 30 seconds prompt check if blocked
+        setInterval(window.checkAndPromptNotificationPermission, 30000);
+
+        // Single Mobile Account Check Logic
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = userNameInput.value.trim();
@@ -203,29 +194,28 @@
             if (phone.length !== 10) { alert('सही 10 अंकों का नंबर लिखें!'); return; }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> कनेक्ट हो रहे हैं...`;
-
-            const fcmToken = await getFCMToken();
+            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट वेरिफाई हो रहा है...`;
 
             try {
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("phone", "==", phone));
                 const querySnapshot = await getDocs(q);
 
-                let userData = { name, phone, fcmToken, lastLogin: new Date().toISOString() };
+                let userData = { name, phone, lastLogin: new Date().toISOString() };
 
+                // If account exists -> Link to single account
                 if (!querySnapshot.empty) {
                     const existingDoc = querySnapshot.docs[0];
-                    await setDoc(doc(db, "users", existingDoc.id), { fcmToken, lastLogin: serverTimestamp() }, { merge: true });
                     userData.name = existingDoc.data().name || name;
+                    await setDoc(doc(db, "users", existingDoc.id), { lastLogin: serverTimestamp() }, { merge: true });
                 } else {
-                    await addDoc(collection(db, "users"), { name, phone, fcmToken, createdAt: serverTimestamp() });
+                    await addDoc(collection(db, "users"), { name, phone, createdAt: serverTimestamp() });
                 }
 
                 localStorage.setItem('notification_user', JSON.stringify(userData));
                 showChatScreen(userData);
             } catch (error) {
-                alert("साइन इन में समस्या आई!");
+                alert("लॉगिन में समस्या आई!");
                 submitBtn.disabled = false;
             }
         });
@@ -243,17 +233,14 @@
                 userFooter.classList.add('hidden');
             }
 
+            checkAndPromptNotificationPermission();
             loadTotalUsersCount();
             loadNotifications();
-
-            onMessage(messaging, (payload) => {
-                alert(`📢 ${payload.notification.title}\n${payload.notification.body}`);
-            });
         }
 
         function loadTotalUsersCount() {
             onSnapshot(collection(db, "users"), (snapshot) => {
-                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${snapshot.size} सदस्य`;
+                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${snapshot.size} Users`;
             });
         }
 
@@ -264,11 +251,7 @@
                 const spinner = document.getElementById('loading-spinner');
                 if(spinner) spinner.remove();
 
-                messagesContainer.innerHTML = `
-                    <div class="text-center text-[11px] text-slate-600 bg-white/80 border border-slate-300 p-2 rounded-xl my-2 shadow-sm">
-                        🔒 यह एक आधिकारिक नेटवर्क चैनल है।
-                    </div>
-                `;
+                messagesContainer.innerHTML = '';
 
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
@@ -276,55 +259,58 @@
                     const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
                     const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
 
-                    // Attachments HTML Render Logic
+                    // WhatsApp Media Cards Render Logic
                     let mediaHTML = '';
                     if (data.mediaType === 'image' && data.mediaUrl) {
                         mediaHTML = `<img src="${data.mediaUrl}" class="w-full max-h-60 object-cover rounded-xl my-2 border border-slate-200">`;
                     } else if (data.mediaType === 'video' && data.mediaUrl) {
                         mediaHTML = `<video controls src="${data.mediaUrl}" class="w-full rounded-xl my-2 border border-slate-200"></video>`;
-                    } else if (data.mediaType === 'file' && data.mediaUrl) {
-                        mediaHTML = `<a href="${data.mediaUrl}" target="_blank" class="flex items-center p-2.5 my-2 bg-slate-100 rounded-xl border text-xs text-indigo-600 font-bold hover:bg-slate-200"><i class="fas fa-file-pdf text-lg text-rose-500 mr-2"></i> फ़ाइल / डॉक्यूमेंट डाउनलोड करें</a>`;
+                    } else if (data.mediaType === 'pdf' && data.mediaUrl) {
+                        mediaHTML = `
+                            <a href="${data.mediaUrl}" target="_blank" class="flex items-center p-3 my-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-bold hover:bg-emerald-100">
+                                <div class="w-10 h-10 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-lg mr-3">
+                                    <i class="fas fa-file-pdf"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="truncate max-w-[180px]">${data.title || 'PDF Document'}</div>
+                                    <div class="text-[10px] text-emerald-600 font-normal">क्लिक करके PDF देखें • 1 Page</div>
+                                </div>
+                                <i class="fas fa-download text-emerald-600 ml-2"></i>
+                            </a>`;
+                    } else if (data.mediaType === 'excel' && data.mediaUrl) {
+                        mediaHTML = `
+                            <a href="${data.mediaUrl}" target="_blank" class="flex items-center p-3 my-2 bg-green-50 rounded-xl border border-green-200 text-xs text-green-900 font-bold hover:bg-green-100">
+                                <div class="w-10 h-10 bg-green-600 text-white rounded-lg flex items-center justify-center text-lg mr-3">
+                                    <i class="fas fa-file-excel"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="truncate max-w-[180px]">${data.title || 'Excel Sheet'}</div>
+                                    <div class="text-[10px] text-green-700 font-normal">Sheet Document • XLS</div>
+                                </div>
+                                <i class="fas fa-download text-green-700 ml-2"></i>
+                            </a>`;
                     } else if (data.mediaType === 'link' && data.mediaUrl) {
-                        mediaHTML = `<a href="${data.mediaUrl}" target="_blank" class="flex items-center p-2.5 my-2 bg-teal-50 rounded-xl border border-teal-200 text-xs text-teal-700 font-bold hover:underline"><i class="fas fa-link mr-2"></i> लिंक खोलें (${data.mediaUrl})</a>`;
-                    }
-
-                    // Replies List HTML
-                    let repliesHTML = '';
-                    if (data.replies && data.replies.length > 0) {
-                        repliesHTML = data.replies.map(r => `
-                            <div class="bg-slate-100 p-2 rounded-lg text-[11px] my-1 border border-slate-200">
-                                <span class="font-bold text-slate-800">${r.userName}:</span> <span class="text-slate-700">${r.text}</span>
-                            </div>
-                        `).join('');
+                        mediaHTML = `
+                            <a href="${data.mediaUrl}" target="_blank" class="block p-2.5 my-2 bg-slate-100 rounded-xl border border-slate-300 text-xs text-teal-700 font-bold hover:underline">
+                                <div class="text-[10px] text-slate-500 font-normal truncate">${data.mediaUrl}</div>
+                                <div class="flex items-center mt-1"><i class="fas fa-external-link-alt mr-1.5"></i> ${data.title || 'वेबसाइट खोलें'}</div>
+                            </a>`;
                     }
 
                     messagesContainer.innerHTML += `
-                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 max-w-[95%] my-2 relative transition hover:shadow-md">
-                            <div class="text-xs font-bold text-teal-700 mb-1.5 flex justify-between items-center">
-                                <span class="flex items-center"><i class="fas fa-shield-check text-teal-500 mr-1.5"></i> Admin Notice</span>
+                        <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 max-w-[92%] my-2 relative">
+                            <div class="text-xs font-bold text-teal-800 mb-1 flex justify-between items-center">
+                                <span>📢 Admin Announcement</span>
                                 <div class="flex items-center space-x-2">
                                     <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
                                     ${isAdmin ? `<button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1"><i class="fas fa-trash-alt"></i></button>` : ''}
                                 </div>
                             </div>
                             
-                            ${data.title ? `<h4 class="font-black text-sm text-slate-900 mb-1 tracking-tight">${data.title}</h4>` : ''}
+                            ${data.title ? `<h4 class="font-bold text-sm text-slate-900 mb-1">${data.title}</h4>` : ''}
                             <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">${data.message}</p>
                             
                             ${mediaHTML}
-
-                            <!-- Replies Container -->
-                            <div class="mt-3 pt-2 border-t border-slate-100">
-                                <div class="text-[10px] font-bold text-slate-500 mb-1">उत्तर (Replies):</div>
-                                ${repliesHTML}
-                                
-                                <div class="flex items-center space-x-2 mt-2">
-                                    <input type="text" id="reply-input-${docId}" placeholder="अपना उत्तर लिखें..." class="flex-1 px-2.5 py-1.5 text-[11px] border rounded-lg bg-slate-50 focus:outline-none focus:ring-1 focus:ring-teal-500">
-                                    <button onclick="sendReply('${docId}')" class="bg-teal-600 hover:bg-teal-700 text-white text-[11px] px-3 py-1.5 rounded-lg font-bold">
-                                        उत्तर दें
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     `;
                 });
@@ -332,38 +318,8 @@
             });
         }
 
-        // उत्तर (Reply) सबमिट करने का फंक्शन
-        window.sendReply = async function(docId) {
-            const input = document.getElementById(`reply-input-${docId}`);
-            const replyText = input.value.trim();
-
-            if (!replyText) return;
-
-            try {
-                const docRef = doc(db, "notifications", docId);
-                const docSnap = await getDocs(query(collection(db, "notifications")));
-                
-                // Firestore Array Update
-                const targetDoc = docSnap.docs.find(d => d.id === docId);
-                if (targetDoc) {
-                    const currentReplies = targetDoc.data().replies || [];
-                    currentReplies.push({
-                        userName: currentUser.name,
-                        phone: currentUser.phone,
-                        text: replyText,
-                        timestamp: new Date().toISOString()
-                    });
-
-                    await setDoc(docRef, { replies: currentReplies }, { merge: true });
-                    input.value = '';
-                }
-            } catch (err) {
-                alert("उत्तर भेजने में समस्या आई: " + err.message);
-            }
-        };
-
         window.deleteNotification = async function(docId) {
-            if (confirm("क्या आप इस नोटिफिकेशन को हटाना चाहते हैं?")) {
+            if (confirm("नोटिफिकेशन डिलीट करना चाहते हैं?")) {
                 await deleteDoc(doc(db, "notifications", docId));
             }
         };
@@ -375,7 +331,7 @@
                 const mediaUrl = document.getElementById('admin-media-url').value.trim();
                 const mediaType = document.getElementById('admin-media-type').value;
 
-                if (!message) { alert("कृपया सन्देश लिखें!"); return; }
+                if (!message && !mediaUrl) { alert("कृपया सन्देश या फ़ाइल URL दर्ज करें!"); return; }
 
                 sendBtn.disabled = true;
 
@@ -385,7 +341,6 @@
                         message: message,
                         mediaUrl: mediaUrl || null,
                         mediaType: mediaType || 'none',
-                        replies: [],
                         timestamp: serverTimestamp()
                     });
 
