@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Outsource Notification Portal</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-gray-100 h-screen flex flex-col justify-center items-center">
 
     <!-- App Container -->
-    <div class="w-full max-w-md bg-white h-full sm:h-[650px] sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
+    <div class="w-full max-w-md bg-white h-full sm:h-[680px] sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
 
         <!-- 1. Registration / Login Screen -->
         <div id="registration-screen" class="p-6 flex flex-col justify-center h-full">
@@ -26,7 +26,7 @@
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">आपका नाम</label>
-                    <input type="text" id="user-name" required placeholder="जैसे: नाम लिखें" 
+                    <input type="text" id="user-name" required placeholder="जैसे: रोशन प्रजापति" 
                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-teal-500 focus:outline-none">
                 </div>
 
@@ -43,7 +43,7 @@
             </form>
         </div>
 
-        <!-- 2. Chat / Notification Screen (WhatsApp Style) -->
+        <!-- 2. Chat / Notification Screen -->
         <div id="chat-screen" class="hidden flex-col h-full bg-[#efeae2]">
             
             <!-- Header -->
@@ -62,10 +62,10 @@
                 </button>
             </div>
 
-            <!-- Messages Area -->
+            <!-- Messages Container -->
             <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3">
                 <div class="text-center text-xs text-gray-500 bg-amber-100 border border-amber-200 p-2 rounded-lg my-2">
-                    🔒 यह एक ऑफिशियल ब्रॉडकास्ट ग्रुप है। केवल एडमिन ही मैसेज भेज सकते हैं।
+                    🔒 यह एक ऑफिशियल ब्रॉडकास्ट ग्रुप है।
                 </div>
                 <div id="loading-spinner" class="text-center py-6 text-gray-500">
                     <i class="fas fa-circle-notch fa-spin text-2xl text-teal-600"></i>
@@ -73,21 +73,32 @@
                 </div>
             </div>
 
-            <!-- Bottom Bar -->
-            <div class="bg-gray-200 px-4 py-3 text-center text-xs text-gray-600 border-t">
-                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन ही इस ग्रुप में पोस्ट कर सकते हैं।
+            <!-- Admin Input Box (केवल एडमिन के लिए दिखेगा) -->
+            <div id="admin-input-box" class="hidden bg-white p-3 border-t flex flex-col space-y-2">
+                <input type="text" id="admin-msg-title" placeholder="सूचना का शीर्षक (Title)" class="px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-500">
+                <div class="flex items-center space-x-2">
+                    <textarea id="admin-msg-body" rows="2" placeholder="नया नोटिफिकेशन मैसेज यहाँ लिखें..." class="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"></textarea>
+                    <button id="send-btn" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-3 rounded-lg font-bold text-sm h-full flex items-center justify-center shadow">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Normal User Footer -->
+            <div id="user-footer" class="bg-gray-200 px-4 py-3 text-center text-xs text-gray-600 border-t">
+                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन ही इस ग्रुप में संदेश भेज सकते हैं।
             </div>
         </div>
 
     </div>
 
-    <!-- Firebase SDK Modules (v10+) -->
+    <!-- Firebase v10 SDK Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
-        // Firebase Configuration
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
             authDomain: "push-notifaction-c3460.firebaseapp.com",
@@ -98,27 +109,21 @@
             measurementId: "G-5W02WYP1ZT"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const messaging = getMessaging(app);
 
-        // VAPID Key (Firebase Messaging Settings से ली जाने वाली सार्वजनिक कुंजी)
-        // यदि अभी तक जनरेट नहीं की है तो यह डिफ़ॉल्ट वेब टोकन सपोर्ट करता है
-        const VAPID_KEY = ""; 
+        // ⚠️ यहाँ अपना एडमिन मोबाइल नंबर डालें
+        const ADMIN_PHONE_NUMBER = "9993332211"; 
 
-        // Service Worker रजिस्टर करें
+        // Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/Outsource-Notification/firebase-messaging-sw.js')
-                .then((registration) => {
-                    console.log('Service Worker Registered successfully:', registration);
-                })
-                .catch((err) => {
-                    console.error('Service Worker registration failed:', err);
-                });
+                .then(reg => console.log('Service Worker Registered'))
+                .catch(err => console.error('SW Fail:', err));
         }
 
-        // UI Elements
+        // Elements
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
         const loginForm = document.getElementById('login-form');
@@ -128,43 +133,31 @@
         const messagesContainer = document.getElementById('messages-container');
         const welcomeUserText = document.getElementById('welcome-user');
         const logoutBtn = document.getElementById('logout-btn');
+        const adminInputBox = document.getElementById('admin-input-box');
+        const userFooter = document.getElementById('user-footer');
+        const sendBtn = document.getElementById('send-btn');
 
-        // Check if user is already saved locally
+        // AUTO-LOGIN (यदि यूजर पहले से रजिस्टर्ड है)
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) {
             showChatScreen(savedUser);
         }
 
-        // 1. FCM Token जनरेट करने का फ़ंक्शन
-        async function requestNotificationToken() {
+        // FCM Token प्राप्त करें
+        async function getFCMToken() {
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    console.log('Notification permission granted.');
-                    
-                    // टोकन प्राप्त करें
-                    const tokenOptions = { serviceWorkerRegistration: await navigator.serviceWorker.ready };
-                    if (VAPID_KEY) tokenOptions.vapidKey = VAPID_KEY;
-
-                    const token = await getToken(messaging, tokenOptions);
-                    if (token) {
-                        console.log('FCM Token Generated:', token);
-                        return token;
-                    } else {
-                        console.log('No registration token available.');
-                        return null;
-                    }
-                } else {
-                    console.log('Unable to get permission to notify.');
-                    return null;
+                    const token = await getToken(messaging, { serviceWorkerRegistration: await navigator.serviceWorker.ready });
+                    return token || "no_token";
                 }
-            } catch (error) {
-                console.error('An error occurred while retrieving token. ', error);
-                return null;
+            } catch (err) {
+                console.log("Token error:", err);
             }
+            return "no_permission";
         }
 
-        // 2. सबमिट फॉर्म इवेंट
+        // फॉर्म सबमिट (रजिस्ट्रेशन और डुप्लिकेट चेक)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = userNameInput.value.trim();
@@ -176,54 +169,71 @@
             }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> कृपया प्रतीक्षा करें...`;
+            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> चेक किया जा रहा है...`;
 
-            // FCM टोकन प्राप्त करें
-            const token = await requestNotificationToken();
-
-            const userData = { 
-                name, 
-                phone, 
-                fcmToken: token || "not_granted",
-                registeredAt: new Date().toISOString() 
-            };
+            const fcmToken = await getFCMToken();
 
             try {
-                // Firestore के 'users' कलेक्शन में नाम, नंबर और FCM Token सेव करें
-                await addDoc(collection(db, "users"), {
-                    ...userData,
-                    timestamp: serverTimestamp()
-                });
+                // 1. डुप्लिकेट नंबर चेक करें (Check if phone exists in Firestore)
+                const usersRef = collection(db, "users");
+                const q = query(usersRef, where("phone", "==", phone));
+                const querySnapshot = await getDocs(q);
 
-                // LocalStorage में सेव करें
+                let userData = { name, phone, fcmToken, lastLogin: new Date().toISOString() };
+
+                if (!querySnapshot.empty) {
+                    // यदि नंबर पहले से है -> पुराना खाता ही अपडेट करें (No duplicate entry)
+                    const existingDoc = querySnapshot.docs[0];
+                    await setDoc(doc(db, "users", existingDoc.id), {
+                        fcmToken: fcmToken,
+                        lastLogin: serverTimestamp()
+                    }, { merge: true });
+
+                    userData.name = existingDoc.data().name || name; // पुराना नाम रखें
+                } else {
+                    // यदि नया नंबर है -> Firestore में नया डॉक्यूमेंट बनाएं
+                    await addDoc(collection(db, "users"), {
+                        name,
+                        phone,
+                        fcmToken,
+                        createdAt: serverTimestamp()
+                    });
+                }
+
+                // LocalStorage में सेव करके ऑटो-लॉगिन करें
                 localStorage.setItem('notification_user', JSON.stringify(userData));
-                
                 showChatScreen(userData);
+
             } catch (error) {
-                console.error("User Save Error: ", error);
-                alert("साइन इन करने में समस्या आई, कृपया रूल्स चेक करें।");
+                console.error("Auth error:", error);
+                alert("साइन इन में समस्या आई, कृपया फ़ायरस्टोर रूल्स जांचें।");
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `<span>ग्रुप में शामिल हों</span> <i class="fas fa-arrow-right ml-2"></i>`;
             }
         });
 
-        // 3. चैट स्क्रीन दिखाएं
+        // चैट स्क्रीन और एडमिन पैनल चालू करें
         function showChatScreen(user) {
             regScreen.classList.add('hidden');
             chatScreen.classList.remove('hidden');
             chatScreen.classList.add('flex');
-            welcomeUserText.innerText = `नमस्ते ${user.name} (${user.phone})`;
+            welcomeUserText.innerText = `${user.name} (${user.phone})`;
+
+            // यदि लॉगिन करने वाला यूजर Admin है
+            if (user.phone === ADMIN_PHONE_NUMBER) {
+                adminInputBox.classList.remove('hidden');
+                userFooter.classList.add('hidden');
+            }
 
             loadNotifications();
 
-            // जब ऐप खुला हो और नया पुश नोटिफिकेशन आये
+            // इन-ऐप नोटिफिकेशन
             onMessage(messaging, (payload) => {
-                console.log('Message received in foreground: ', payload);
                 alert(`📢 नया नोटिफिकेशन:\n${payload.notification.title}\n${payload.notification.body}`);
             });
         }
 
-        // 4. मैसेज लोड करने का फ़ंक्शन
+        // मैसेज लोड करें
         function loadNotifications() {
             const q = query(collection(db, "notifications"), orderBy("timestamp", "asc"));
 
@@ -233,24 +243,15 @@
 
                 messagesContainer.innerHTML = `
                     <div class="text-center text-xs text-gray-500 bg-amber-100 border border-amber-200 p-2 rounded-lg my-2">
-                        🔒 यह एक ऑफिशियल ब्रॉडकास्ट ग्रुप है। केवल एडमिन ही मैसेज भेज सकते हैं।
+                        🔒 यह एक ऑफिशियल ब्रॉडकास्ट ग्रुप है।
                     </div>
                 `;
-
-                if (snapshot.empty) {
-                    messagesContainer.innerHTML += `
-                        <div class="text-center text-gray-400 text-xs my-8">
-                            अभी तक कोई मैसेज जारी नहीं किया गया है।
-                        </div>
-                    `;
-                    return;
-                }
 
                 snapshot.forEach((doc) => {
                     const data = doc.data();
                     const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
 
-                    const messageHTML = `
+                    messagesContainer.innerHTML += `
                         <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-teal-600 max-w-[90%] my-2">
                             <div class="text-xs font-bold text-teal-700 mb-1 flex justify-between">
                                 <span>📢 Admin Notification</span>
@@ -260,16 +261,45 @@
                             <p class="text-sm text-gray-800 whitespace-pre-wrap">${data.message}</p>
                         </div>
                     `;
-                    messagesContainer.innerHTML += messageHTML;
                 });
-
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
 
-        // 5. लॉगआउट
+        // एडमिन द्वारा नया मैसेज पोस्ट करना
+        if(sendBtn) {
+            sendBtn.addEventListener('click', async () => {
+                const title = document.getElementById('admin-msg-title').value.trim();
+                const message = document.getElementById('admin-msg-body').value.trim();
+
+                if (!message) {
+                    alert("कृपया संदेश लिखें!");
+                    return;
+                }
+
+                sendBtn.disabled = true;
+
+                try {
+                    await addDoc(collection(db, "notifications"), {
+                        title: title || "महत्वपूर्ण सूचना",
+                        message: message,
+                        timestamp: serverTimestamp()
+                    });
+
+                    document.getElementById('admin-msg-title').value = '';
+                    document.getElementById('admin-msg-body').value = '';
+                    sendBtn.disabled = false;
+
+                } catch (err) {
+                    alert("मैसेज भेजने में समस्या आई: " + err.message);
+                    sendBtn.disabled = false;
+                }
+            });
+        }
+
+        // लॉगआउट
         logoutBtn.addEventListener('click', () => {
-            if (confirm("क्या आप प्रोफाइल/नंबर बदलना चाहते हैं?")) {
+            if (confirm("क्या आप लॉगआउट करके दूसरा नंबर बदलना चाहते हैं?")) {
                 localStorage.removeItem('notification_user');
                 location.reload();
             }
