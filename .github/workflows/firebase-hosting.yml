@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
 
-      # 1. Functions की डिपेंडेंसी इंस्टॉल करें
+      # 1. Cloud Functions की डिपेंडेंसी इंस्टॉल करें
       - name: Install Functions Dependencies
         run: |
           cd functions
@@ -28,7 +28,7 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      # 3. Service Account से ऑथेंटिकेट करके डिप्लॉय करें
+      # 3. Service Account JSON से ऑथेंटिकेट करके डिप्लॉय करें
       - name: Deploy to Firebase
         env:
           GCP_SA_KEY: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
