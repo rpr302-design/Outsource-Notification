@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outsource Notification Portal</title>
+    <!-- Tailwind CSS for WhatsApp-like UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 h-screen flex flex-col justify-center items-center">
+
+    <!-- App Container -->
+    <div class="w-full max-w-md bg-white h-full sm:h-[650px] sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
+
+        <!-- 1. Registration / Login Screen -->
+        <div id="registration-screen" class="p-6 flex flex-col justify-center h-full">
+            <div class="text-center mb-8">
+                <div class="bg-teal-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl shadow-md">
+                    <i class="fas fa-bullhorn"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">नोटिफिकेशन ग्रुप</h2>
+                <p class="text-sm text-gray-500 mt-1">महत्वपूर्ण सूचनाएं पाने के लिए अपना नाम और नंबर दर्ज करें</p>
+            </div>
+
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">आपका नाम</label>
+                    <input type="text" id="user-name" required placeholder="जैसे: नाम लिखें" 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">मोबाइल नंबर (10 अंक)</label>
+                    <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="9876543210" 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition duration-200 shadow-md">
+                    ग्रुप में शामिल हों <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. Chat / Notification Screen (WhatsApp Style) -->
+        <div id="chat-screen" class="hidden flex-col h-full bg-[#efeae2]">
+            
+            <!-- WhatsApp-like Header -->
+            <div class="bg-teal-700 text-white px-4 py-3 flex items-center justify-between shadow">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center font-bold text-lg border border-white/30">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base leading-tight">MP Outsource सूचना ग्रुप</h3>
+                        <p class="text-xs text-teal-200" id="welcome-user">Admin Announcements</p>
+                    </div>
+                </div>
+                <button id="logout-btn" title="प्रोफाइल बदलें" class="text-teal-200 hover:text-white text-sm">
+                    <i class="fas fa-sign-out-alt text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <div class="text-center text-xs text-gray-500 bg-amber-100 border border-amber-200 p-2 rounded-lg my-2">
+                    🔒 यह एक ऑफिशियल ब्रॉडकास्ट ग्रुप है। केवल एडमिन ही मैसेज भेज सकते हैं।
+                </div>
+                <!-- Firebase से मैसेज यहाँ लोड होंगे -->
+                <div id="loading-spinner" class="text-center py-6 text-gray-500">
+                    <i class="fas fa-circle-notch fa-spin text-2xl text-teal-600"></i>
+                    <p class="text-xs mt-2">मैसेज लोड हो रहे हैं...</p>
+                </div>
+            </div>
+
+            <!-- Read Only Bottom Bar -->
+            <div class="bg-gray-200 px-4 py-3 text-center text-xs text-gray-600 border-t">
+                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन ही इस ग्रुप में पोस्ट कर सकते हैं।
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK Modules (v10+) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // आपकी Firebase की कॉन्फ़िगरेशन
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
+            authDomain: "push-notifaction-c3460.firebaseapp.com",
+            projectId: "push-notifaction-c3460",
+            storageBucket: "push-notifaction-c3460.firebasestorage.app",
+            messagingSenderId: "649136234508",
+            appId: "1:649136234508:web:39b8e06150890d360ace29",
+            measurementId: "G-5W02WYP1ZT"
+        };
+
+        // Firebase शुरू करें
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // UI DOM Elements
+        const regScreen = document.getElementById('registration-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const loginForm = document.getElementById('login-form');
+        const userNameInput = document.getElementById('user-name');
+        const userPhoneInput = document.getElementById('user-phone');
+        const messagesContainer = document.getElementById('messages-container');
+        const welcomeUserText = document.getElementById('welcome-user');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // 1. चेक करें कि क्या यूजर पहले से लॉग-इन है
+        const savedUser = JSON.parse(localStorage.getItem('notification_user'));
+        if (savedUser) {
+            showChatScreen(savedUser);
+        }
+
+        // 2. सबमिट फॉर्म इवेंट
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = userNameInput.value.trim();
+            const phone = userPhoneInput.value.trim();
+
+            if (phone.length !== 10) {
+                alert('कृपया सही 10 अंकों का मोबाइल नंबर दर्ज करें!');
+                return;
+            }
+
+            const userData = { name, phone, registeredAt: new Date().toISOString() };
+
+            try {
+                // यूजर की एंट्री Firestore डेटाबेस के 'users' कलेक्शन में सेव करें
+                await addDoc(collection(db, "users"), {
+                    ...userData,
+                    timestamp: serverTimestamp()
+                });
+
+                // ब्राउज़र में यूजर डेटा सेव करें
+                localStorage.setItem('notification_user', JSON.stringify(userData));
+                
+                showChatScreen(userData);
+            } catch (error) {
+                console.error("यूजर सेव करने में त्रुटि: ", error);
+                alert("साइन इन करने में समस्या आई, कृपया दोबारा प्रयास करें।");
+            }
+        });
+
+        // 3. चैट स्क्रीन दिखाएं और मैसेज लोड करें
+        function showChatScreen(user) {
+            regScreen.classList.add('hidden');
+            chatScreen.classList.remove('hidden');
+            chatScreen.classList.add('flex');
+            welcomeUserText.innerText = `नमस्ते ${user.name} (${user.phone})`;
+
+            // Firestore से रियल-टाइम मैसेज सुनें
+            loadNotifications();
+        }
+
+        // 4. मैसेज लोड करने का फ़ंक्शन (Realtime Listener)
+        function loadNotifications() {
+            const q = query(collection(db, "notifications"), orderBy("timestamp", "asc"));
+
+            onSnapshot(q, (snapshot) => {
+                // स्पिनर हटाएं
+                const spinner = document.getElementById('loading-spinner');
+                if(spinner) spinner.remove();
+
+                // मैसेज कंटेनर क्लियर करें (स्टैटिक टेक्स्ट छोड़कर)
+                messagesContainer.innerHTML = `
+                    <div class="text-center text-xs text-gray-500 bg-amber-100 border border-amber-200 p-2 rounded-lg my-2">
+                        🔒 यह एक ऑफिशियल ब्रॉडकास्ट ग्रुप है। केवल एडमिन ही मैसेज भेज सकते हैं।
+                    </div>
+                `;
+
+                if (snapshot.empty) {
+                    messagesContainer.innerHTML += `
+                        <div class="text-center text-gray-400 text-xs my-8">
+                            अभी तक कोई मैसेज जारी नहीं किया गया है।
+                        </div>
+                    `;
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
+
+                    const messageHTML = `
+                        <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-teal-600 max-w-[90%] my-2">
+                            <div class="text-xs font-bold text-teal-700 mb-1 flex justify-between">
+                                <span>📢 Admin Notification</span>
+                                <span class="text-[10px] text-gray-400 font-normal">${msgTime}</span>
+                            </div>
+                            <p class="text-sm text-gray-800 whitespace-pre-wrap">${data.message}</p>
+                            ${data.title ? `<h4 class="font-bold text-sm text-gray-900 mb-1">${data.title}</h4>` : ''}
+                        </div>
+                    `;
+                    messagesContainer.innerHTML += messageHTML;
+                });
+
+                // ऑटो स्क्रॉल नीचे की तरफ
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+        }
+
+        // 5. लॉगआउट / नंबर बदलने का बटन
+        logoutBtn.addEventListener('click', () => {
+            if (confirm("क्या आप प्रोफाइल/नंबर बदलना चाहते हैं?")) {
+                localStorage.removeItem('notification_user');
+                location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
