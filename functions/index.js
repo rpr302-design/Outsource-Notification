@@ -6,7 +6,7 @@ admin.initializeApp();
 exports.sendNotificationToAll = onDocumentCreated("notifications/{docId}", async (event) => {
     const snapshot = event.data;
     if (!snapshot) {
-        console.log("No data found");
+        console.log("No data found in event");
         return;
     }
 
@@ -31,21 +31,26 @@ exports.sendNotificationToAll = onDocumentCreated("notifications/{docId}", async
             return;
         }
 
-        // 2. सभी टोकन्स पर नोटिफिकेशन पेलोड भेजें
+        // 2. पेलोड तैयार करें
         const payload = {
+            tokens: tokens,
             notification: {
                 title: title,
-                body: message,
-                icon: "/icon.png"
+                body: message
+            },
+            webpush: {
+                notification: {
+                    title: title,
+                    body: message,
+                    icon: "/icon.png"
+                }
             }
         };
 
-        const response = await admin.messaging().sendMulticast({
-            tokens: tokens,
-            notification: payload.notification
-        });
+        // 3. सभी टोकन्स पर नोटिफिकेशन भेजें
+        const response = await admin.messaging().sendEachForMulticast(payload);
+        console.log(`सफलतापूर्वक ${response.successCount} यूज़र्स को नोटिफिकेशन भेजा गया। फ़ेल हुए: ${response.failureCount}`);
 
-        console.log(`सफलतापूर्वक ${response.successCount} यूज़र्स को नोटिफिकेशन भेजा गया।`);
     } catch (error) {
         console.error("नोटिफिकेशन भेजने में त्रुटि:", error);
     }
