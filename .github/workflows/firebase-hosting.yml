@@ -3,7 +3,8 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - main  # या अगर आपकी डिफ़ॉल्ट ब्रांच master है तो 'master' लिखें
+      - main
+      - master
 
 jobs:
   build_and_deploy:
