@@ -54,7 +54,13 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-base leading-tight">MP Outsource सूचना ग्रुप</h3>
-                        <p class="text-xs text-teal-200" id="welcome-user">Admin Announcements</p>
+                        <div class="flex items-center space-x-2 text-xs text-teal-200">
+                            <span id="welcome-user">Admin Announcements</span>
+                            <span>•</span>
+                            <span id="user-count-badge" class="bg-teal-800 px-2 py-0.5 rounded-full text-[10px] text-teal-100 font-semibold border border-teal-500">
+                                <i class="fas fa-user-friends mr-1"></i>0 Users
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <button id="logout-btn" title="प्रोफाइल बदलें" class="text-teal-200 hover:text-white text-sm">
@@ -95,7 +101,7 @@
     <!-- Firebase v10 SDK Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, setDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
         // Firebase Config
@@ -116,7 +122,9 @@
         // एडमिन मोबाइल नंबर
         const ADMIN_PHONE_NUMBER = "9993332211"; 
 
-        // Service Worker Registration (Firebase Hosting path)
+        let currentUser = null;
+
+        // Service Worker Registration
         let swRegistration = null;
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/firebase-messaging-sw.js')
@@ -136,18 +144,19 @@
         const submitBtn = document.getElementById('submit-btn');
         const messagesContainer = document.getElementById('messages-container');
         const welcomeUserText = document.getElementById('welcome-user');
+        const userCountBadge = document.getElementById('user-count-badge');
         const logoutBtn = document.getElementById('logout-btn');
         const adminInputBox = document.getElementById('admin-input-box');
         const userFooter = document.getElementById('user-footer');
         const sendBtn = document.getElementById('send-btn');
 
-        // AUTO-LOGIN (यदि यूजर पहले से रजिस्टर्ड है)
+        // AUTO-LOGIN
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) {
             showChatScreen(savedUser);
         }
 
-        // FCM Token प्राप्त करने का फंक्शन
+        // FCM Token
         async function getFCMToken() {
             try {
                 const permission = await Notification.requestPermission();
@@ -164,7 +173,7 @@
             return "no_permission";
         }
 
-        // फॉर्म सबमिट (रजिस्ट्रेशन और डुप्लिकेट चेक)
+        // फॉर्म सबमिट
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = userNameInput.value.trim();
@@ -181,7 +190,6 @@
             const fcmToken = await getFCMToken();
 
             try {
-                // 1. डुप्लिकेट नंबर चेक करें
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("phone", "==", phone));
                 const querySnapshot = await getDocs(q);
@@ -189,7 +197,6 @@
                 let userData = { name, phone, fcmToken, lastLogin: new Date().toISOString() };
 
                 if (!querySnapshot.empty) {
-                    // यदि नंबर पहले से है -> पुराना खाता अपडेट करें
                     const existingDoc = querySnapshot.docs[0];
                     await setDoc(doc(db, "users", existingDoc.id), {
                         fcmToken: fcmToken,
@@ -198,7 +205,6 @@
 
                     userData.name = existingDoc.data().name || name;
                 } else {
-                    // यदि नया नंबर है -> Firestore में नया डॉक्यूमेंट बनाएं
                     await addDoc(collection(db, "users"), {
                         name,
                         phone,
@@ -207,7 +213,6 @@
                     });
                 }
 
-                // LocalStorage में सेव करके ऑटो-लॉगिन करें
                 localStorage.setItem('notification_user', JSON.stringify(userData));
                 showChatScreen(userData);
 
@@ -219,28 +224,36 @@
             }
         });
 
-        // चैट स्क्रीन और एडमिन पैनल चालू करें
+        // चैट स्क्रीन और एडमिन पैनल
         function showChatScreen(user) {
+            currentUser = user;
             regScreen.classList.add('hidden');
             chatScreen.classList.remove('hidden');
             chatScreen.classList.add('flex');
-            welcomeUserText.innerText = `${user.name} (${user.phone})`;
+            welcomeUserText.innerText = `${user.name}`;
 
-            // यदि लॉगिन करने वाला यूजर Admin है
             if (user.phone === ADMIN_PHONE_NUMBER) {
                 adminInputBox.classList.remove('hidden');
                 userFooter.classList.add('hidden');
             }
 
+            loadTotalUsersCount();
             loadNotifications();
 
-            // इन-ऐप नोटिफिकेशन
             onMessage(messaging, (payload) => {
                 alert(`📢 नया नोटिफिकेशन:\n${payload.notification.title}\n${payload.notification.body}`);
             });
         }
 
-        // मैसेज लोड करें
+        // 1. कुल जुड़े यूज़र्स की संख्या (Real-time Count)
+        function loadTotalUsersCount() {
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                const total = snapshot.size;
+                userCountBadge.innerHTML = `<i class="fas fa-user-friends mr-1"></i>${total} Users`;
+            });
+        }
+
+        // 2. मैसेज लोड करें (डिलीट बटन एडमिन के लिए)
         function loadNotifications() {
             const q = query(collection(db, "notifications"), orderBy("timestamp", "asc"));
 
@@ -254,15 +267,21 @@
                     </div>
                 `;
 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const docId = docSnap.id;
                     const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
 
+                    const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
+
                     messagesContainer.innerHTML += `
-                        <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-teal-600 max-w-[90%] my-2">
-                            <div class="text-xs font-bold text-teal-700 mb-1 flex justify-between">
+                        <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-teal-600 max-w-[90%] my-2 relative group">
+                            <div class="text-xs font-bold text-teal-700 mb-1 flex justify-between items-center">
                                 <span>📢 Admin Notification</span>
-                                <span class="text-[10px] text-gray-400 font-normal">${msgTime}</span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-[10px] text-gray-400 font-normal">${msgTime}</span>
+                                    ${isAdmin ? `<button onclick="deleteNotification('${docId}')" class="text-red-500 hover:text-red-700 text-xs ml-2 p-1" title="मैसेज डिलीट करें"><i class="fas fa-trash-alt"></i></button>` : ''}
+                                </div>
                             </div>
                             ${data.title ? `<h4 class="font-bold text-sm text-gray-900 mb-1">${data.title}</h4>` : ''}
                             <p class="text-sm text-gray-800 whitespace-pre-wrap">${data.message}</p>
@@ -273,7 +292,19 @@
             });
         }
 
-        // एडमिन द्वारा नया मैसेज पोस्ट करना
+        // एडमिन द्वारा मैसेज डिलीट करने का फंक्शन
+        window.deleteNotification = async function(docId) {
+            if (confirm("क्या आप इस नोटिफिकेशन को डिलीट करना चाहते हैं?")) {
+                try {
+                    await deleteDoc(doc(db, "notifications", docId));
+                } catch (err) {
+                    alert("डिलीट करने में समस्या आई: " + err.message);
+                }
+            }
+
+        };
+
+        // नया मैसेज पोस्ट करना
         if(sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
