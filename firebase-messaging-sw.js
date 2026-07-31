@@ -12,6 +12,7 @@ firebase.initializeApp({
   measurementId: "G-5W02WYP1ZT"
 });
 
+
 const messaging = firebase.messaging();
 
 // जब ऐप बंद हो या बैकग्राउंड में हो, तब पुश नोटिफिकेशन हैंडल करें
