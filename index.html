@@ -113,13 +113,17 @@
         const db = getFirestore(app);
         const messaging = getMessaging(app);
 
-        // ⚠️ यहाँ अपना एडमिन मोबाइल नंबर डालें
+        // एडमिन मोबाइल नंबर
         const ADMIN_PHONE_NUMBER = "9993332211"; 
 
-        // Service Worker
+        // Service Worker Registration (Firebase Hosting path)
+        let swRegistration = null;
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/Outsource-Notification/firebase-messaging-sw.js')
-                .then(reg => console.log('Service Worker Registered'))
+            navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                .then(reg => {
+                    swRegistration = reg;
+                    console.log('Firebase Hosting Service Worker Registered');
+                })
                 .catch(err => console.error('SW Fail:', err));
         }
 
@@ -143,12 +147,15 @@
             showChatScreen(savedUser);
         }
 
-        // FCM Token प्राप्त करें
+        // FCM Token प्राप्त करने का फंक्शन
         async function getFCMToken() {
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    const token = await getToken(messaging, { serviceWorkerRegistration: await navigator.serviceWorker.ready });
+                    const reg = swRegistration || await navigator.serviceWorker.ready;
+                    const token = await getToken(messaging, { 
+                        serviceWorkerRegistration: reg 
+                    });
                     return token || "no_token";
                 }
             } catch (err) {
@@ -174,7 +181,7 @@
             const fcmToken = await getFCMToken();
 
             try {
-                // 1. डुप्लिकेट नंबर चेक करें (Check if phone exists in Firestore)
+                // 1. डुप्लिकेट नंबर चेक करें
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("phone", "==", phone));
                 const querySnapshot = await getDocs(q);
@@ -182,14 +189,14 @@
                 let userData = { name, phone, fcmToken, lastLogin: new Date().toISOString() };
 
                 if (!querySnapshot.empty) {
-                    // यदि नंबर पहले से है -> पुराना खाता ही अपडेट करें (No duplicate entry)
+                    // यदि नंबर पहले से है -> पुराना खाता अपडेट करें
                     const existingDoc = querySnapshot.docs[0];
                     await setDoc(doc(db, "users", existingDoc.id), {
                         fcmToken: fcmToken,
                         lastLogin: serverTimestamp()
                     }, { merge: true });
 
-                    userData.name = existingDoc.data().name || name; // पुराना नाम रखें
+                    userData.name = existingDoc.data().name || name;
                 } else {
                     // यदि नया नंबर है -> Firestore में नया डॉक्यूमेंट बनाएं
                     await addDoc(collection(db, "users"), {
