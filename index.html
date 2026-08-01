@@ -155,7 +155,7 @@
                 </div>
 
                 <div id="upload-progress" class="hidden text-[11px] font-bold text-teal-700 text-center py-1 bg-teal-50 rounded">
-                    <i class="fas fa-spinner fa-spin mr-1"></i> स्टोरेज में डायरेक्ट अपडेट हो रहा है...
+                    <i class="fas fa-spinner fa-spin mr-1"></i> Storage में data.json ओवरराइट हो रहा है...
                 </div>
             </div>
 
@@ -366,7 +366,7 @@
             loadDataFromFirebaseStorage();
         }
 
-        // 🟢 Direct Fetch Engine (Via Hosting Rewrite)
+        // 🟢 Fetch Data Engine (Hosting Rewrite)
         async function loadDataFromFirebaseStorage() {
             // Step 1: Render Local Storage Cache Instantly
             const localCachedData = localStorage.getItem('cached_notifications');
@@ -396,7 +396,6 @@
                 if (freshData.notifications && Array.isArray(freshData.notifications)) {
                     let fetchedList = freshData.notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     
-                    // Purge Layer: केवल टॉप 20 हालिया मैसेज रखेगा
                     fetchedList = fetchedList.slice(0, MAX_MESSAGES_LIMIT);
 
                     allNotificationsData = fetchedList;
@@ -487,13 +486,16 @@
             });
         }
 
-        // 🚀 Admin Action: Overwrites data.json inside Firebase Storage directly
+        // 🚀 Admin Action: Overwrites data.json inside Firebase Storage
         if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
                 const message = document.getElementById('admin-msg-body').value.trim();
 
-                if (!message && !selectedFile) { alert("कृपया सन्देश लिखें या फ़ाइल चुनें!"); return; }
+                if (!message && !selectedFile) { 
+                    alert("कृपया संदेश लिखें या फ़ाइल चुनें!"); 
+                    return; 
+                }
 
                 sendBtn.disabled = true;
                 uploadProgress.classList.remove('hidden');
@@ -503,6 +505,7 @@
                 let fileName = '';
 
                 try {
+                    // Step 1: अगर फ़ाइल है तो अपलोड करें
                     if (selectedFile) {
                         fileName = selectedFile.name;
                         const mediaStorageRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
@@ -515,6 +518,23 @@
                         else mediaType = 'file';
                     }
 
+                    // Step 2: Storage से मौजूदा data.json की ताज़ा कॉपी लाएँ
+                    let currentNotifications = [];
+                    try {
+                        const jsonRef = ref(storage, 'data.json');
+                        const liveUrl = await getDownloadURL(jsonRef);
+                        const res = await fetch(liveUrl + "?t=" + Date.now());
+                        if (res.ok) {
+                            const parsed = await res.json();
+                            if (parsed && Array.isArray(parsed.notifications)) {
+                                currentNotifications = parsed.notifications;
+                            }
+                        }
+                    } catch (e) {
+                        console.log("पुराना data.json नहीं मिला या पहला मैसेज है, नया स्ट्रक्चर बनेगा।", e);
+                    }
+
+                    // Step 3: नया मैसेज लिस्ट में सबसे ऊपर जोड़ें
                     const newMsg = {
                         id: 'msg_' + Date.now(),
                         adminName: currentUser ? currentUser.name : "MP Outsource Admin",
@@ -526,34 +546,36 @@
                         timestamp: new Date().toISOString()
                     };
 
-                    allNotificationsData.unshift(newMsg);
-                    allNotificationsData = allNotificationsData.slice(0, MAX_MESSAGES_LIMIT);
+                    currentNotifications.unshift(newMsg);
+                    currentNotifications = currentNotifications.slice(0, MAX_MESSAGES_LIMIT);
 
-                    const updatedJsonString = JSON.stringify({
+                    const updatedPayload = JSON.stringify({
                         app_settings: {
                             total_users_count: 12500,
                             last_updated: new Date().toISOString()
                         },
-                        notifications: allNotificationsData
+                        notifications: currentNotifications
                     }, null, 2);
 
-                    // Storage में data.json को ओवरराइट करें
+                    // Step 4: Storage पर data.json को सीधे 'raw' स्ट्रिंग के साथ ओवरराइट करें
                     const jsonStorageRef = ref(storage, 'data.json');
-                    await uploadString(jsonStorageRef, updatedJsonString, 'raw', {
+                    await uploadString(jsonStorageRef, updatedPayload, 'raw', {
                         contentType: 'application/json'
                     });
 
+                    allNotificationsData = currentNotifications;
                     localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                     renderFilteredNotifications();
 
-                    alert("🎉 सन्देश लाइव हो गया!");
+                    alert("🎉 संदेश सफलतापूर्वक data.json में पहुँच गया और लाइव हो गया!");
 
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
-                    clearFileBtn.click();
+                    if (clearFileBtn) clearFileBtn.click();
 
                 } catch (err) {
-                    alert("अपलोड में त्रुटि: " + err.message);
+                    alert("डेटा भेजने में त्रुटि (Error): " + err.message);
+                    console.error("Upload Error Details:", err);
                 } finally {
                     sendBtn.disabled = false;
                     uploadProgress.classList.add('hidden');
