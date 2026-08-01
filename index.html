@@ -200,7 +200,9 @@
 
         const ADMIN_PHONE_NUMBER = "9993332211";
         const MAX_MESSAGES_LIMIT = 20;
-        const DIRECT_DATA_JSON_URL = "https://firebasestorage.googleapis.com/v0/b/push-notifaction-c3460.firebasestorage.app/o/data.json?alt=media&token=9c62bc3b-edc9-40a1-9cc3-6613c40b9640";
+        
+        // 🚀 बिना टोकन वाला स्वच्छ Public URL (जो रूल्स पब्लिक होने पर कभी बंद नहीं होता)
+        const DIRECT_DATA_JSON_URL = "https://firebasestorage.googleapis.com/v0/b/push-notifaction-c3460.firebasestorage.app/o/data.json?alt=media";
 
         let currentUser = null;
         let selectedFile = null;
@@ -364,7 +366,7 @@
             loadDataFromFirebaseStorage();
         }
 
-        // 🟢 Direct Public Token Fetch Engine (0 Firestore Cost)
+        // 🟢 Direct Public Token-Free Engine (0 Firestore Cost)
         async function loadDataFromFirebaseStorage() {
             // Step 1: Render Local Storage Cache Instantly
             const localCachedData = localStorage.getItem('cached_notifications');
@@ -377,7 +379,7 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: Fetch Live data.json via Direct Token URL with Cache Buster
+            // Step 2: Fetch Live data.json via Direct Public URL with Cache Buster
             try {
                 const response = await fetch(DIRECT_DATA_JSON_URL + "&t=" + Date.now());
 
