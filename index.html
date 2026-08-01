@@ -25,9 +25,9 @@
         <div id="blocked-banner" class="hidden bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md z-20">
             <div class="flex items-center space-x-2">
                 <i class="fas fa-bell-slash text-base"></i>
-                <span>नोटिफिकेशन ब्लॉक हैं! सभी अपडेट्स पाने के लिए सेटिंग से Allow करें।</span>
+                <span>नोटिफिकेशन बंद हैं! अपडेट्स पाने के लिए Allow करें।</span>
             </div>
-            <button onclick="checkAndPromptNotificationPermission()" class="bg-slate-900 px-2 py-1 rounded text-[10px] font-bold">Unblock</button>
+            <button onclick="requestNotificationPermission()" class="bg-slate-900 px-2 py-1 rounded text-[10px] font-bold">Unblock</button>
         </div>
 
         <!-- 1. Registration / Login Screen -->
@@ -67,7 +67,7 @@
         <!-- 2. Main Media Feed / Chat Screen -->
         <div id="chat-screen" class="hidden flex-col h-full wa-bg">
             
-            <!-- WhatsApp Style Header -->
+            <!-- Header -->
             <div class="bg-teal-800 text-white px-4 py-3 flex items-center justify-between shadow-md z-10">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center font-bold text-lg border border-white/20">
@@ -95,13 +95,12 @@
                 </div>
             </div>
 
-            <!-- Admin Gallery Upload & Message Input Box -->
+            <!-- Admin Input Box -->
             <div id="admin-input-box" class="hidden bg-white p-3 border-t border-slate-300 flex-col space-y-2 shadow-2xl">
                 <input type="text" id="admin-msg-title" placeholder="📌 शीर्षक (Title)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 font-bold">
                 
-                <textarea id="admin-msg-body" rows="2" placeholder="💬 संदेश लिखें... (यहाँ लिखी वेबसाइट लिंक अपने आप नीले रंग की बन जाएगी)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"></textarea>
+                <textarea id="admin-msg-body" rows="2" placeholder="💬 संदेश लिखें..." class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"></textarea>
 
-                <!-- Direct Mobile Gallery / File Picker -->
                 <div class="flex items-center space-x-2">
                     <label class="flex-1 flex items-center justify-center px-3 py-2 border border-dashed border-teal-600 bg-teal-50 text-teal-700 rounded-lg text-xs font-bold cursor-pointer hover:bg-teal-100 transition">
                         <i class="fas fa-paperclip text-sm mr-2"></i>
@@ -111,13 +110,12 @@
                     <button id="clear-file-btn" class="hidden text-rose-500 p-2 text-xs" title="फ़ाइल हटाएं"><i class="fas fa-times-circle text-base"></i></button>
                 </div>
 
-                <!-- Upload Progress Status -->
                 <div id="upload-progress" class="hidden text-[11px] font-bold text-teal-700 text-center py-1 bg-teal-50 rounded">
-                    <i class="fas fa-spinner fa-spin mr-1"></i> अपलोडिंग हो रही है...
+                    <i class="fas fa-spinner fa-spin mr-1"></i> अपलोड हो रहा है...
                 </div>
 
                 <button id="send-btn" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-xl text-xs flex justify-center items-center shadow">
-                    <i class="fas fa-paper-plane mr-2"></i> ब्रॉडकास्ट नोटिफिकेशन पोस्ट करें
+                    <i class="fas fa-paper-plane mr-2"></i> ब्रॉडकास्ट पोस्ट करें
                 </button>
             </div>
 
@@ -129,18 +127,17 @@
 
     </div>
 
-    <!-- Firebase v10 SDK -->
+    <!-- Firebase v10 SDK (Compat & Modular Mix to ensure absolute compatibility) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
             authDomain: "push-notifaction-c3460.firebaseapp.com",
             projectId: "push-notifaction-c3460",
-            storageBucket: "push-notifaction-c3460.firebasestorage.app",
+            storageBucket: "push-notifaction-c3460.appspot.com", // Updated bucket host
             messagingSenderId: "649136234508",
             appId: "1:649136234508:web:39b8e06150890d360ace29"
         };
@@ -148,11 +145,14 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const storage = getStorage(app);
-        const messaging = getMessaging(app);
+
+        // कस्टम लोगो URL (Chrome Icon की जगह यह दिखेगा)
+        const APP_CUSTOM_LOGO = "https://cdn-icons-png.flaticon.com/512/2950/2950650.png";
 
         const ADMIN_PHONE_NUMBER = "9993332211"; 
         let currentUser = null;
         let selectedFile = null;
+        let isInitialLoad = true;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -173,20 +173,16 @@
         const uploadProgress = document.getElementById('upload-progress');
         const blockedBanner = document.getElementById('blocked-banner');
 
-        // Text parsing helper to turn URLs into Blue Clickable Links
         function formatMessageText(text) {
             if (!text) return '';
             const urlPattern = /(https?:\/\/[^\s]+)/g;
-            return text.replace(urlPattern, function(url) {
-                return `<a href="${url}" target="_blank" class="blue-link">${url}</a>`;
-            });
+            return text.replace(urlPattern, (url) => `<a href="${url}" target="_blank" class="blue-link">${url}</a>`);
         }
 
-        // Handle File Selection
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 selectedFile = e.target.files[0];
-                fileLabel.innerText = `चयनित फ़ाइल: ${selectedFile.name.substring(0, 20)}...`;
+                fileLabel.innerText = `फ़ाइल: ${selectedFile.name.substring(0, 18)}...`;
                 clearFileBtn.classList.remove('hidden');
             }
         });
@@ -198,23 +194,33 @@
             clearFileBtn.classList.add('hidden');
         });
 
+        // Notification Permission Prompt
+        window.requestNotificationPermission = async function() {
+            if ("Notification" in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    blockedBanner.classList.add('hidden');
+                } else {
+                    blockedBanner.classList.remove('hidden');
+                }
+            }
+        };
+
+        // Custom Notification Generator (Chrome Logo Fix)
+        function triggerCustomNotification(title, body) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title || "MP Outsource Update", {
+                    body: body || "नया संदेश आया है!",
+                    icon: APP_CUSTOM_LOGO, // Chrome logo Replace
+                    badge: APP_CUSTOM_LOGO
+                });
+            }
+        }
+
         // Auto Login
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) { showChatScreen(savedUser); }
 
-        window.checkAndPromptNotificationPermission = async function() {
-            if (Notification.permission === 'denied') {
-                blockedBanner.classList.remove('hidden');
-            } else if (Notification.permission === 'default') {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') { blockedBanner.classList.add('hidden'); }
-                else { blockedBanner.classList.remove('hidden'); }
-            } else {
-                blockedBanner.classList.add('hidden');
-            }
-        };
-
-        // Single Mobile Number Login Logic
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = userNameInput.value.trim();
@@ -223,7 +229,7 @@
             if (phone.length !== 10) { alert('सही 10 अंकों का नंबर लिखें!'); return; }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> चेक हो रहा है...`;
+            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> लॉगिन हो रहा है...`;
 
             try {
                 const usersRef = collection(db, "users");
@@ -243,8 +249,10 @@
                 localStorage.setItem('notification_user', JSON.stringify(userData));
                 showChatScreen(userData);
             } catch (error) {
-                alert("साइन इन एरर!");
+                alert("लॉगिन में समस्या आई: " + error.message);
+            } finally {
                 submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>साइन इन करें</span> <i class="fas fa-arrow-right ml-2"></i>`;
             }
         });
 
@@ -261,7 +269,7 @@
                 userFooter.classList.add('hidden');
             }
 
-            checkAndPromptNotificationPermission();
+            requestNotificationPermission();
             loadTotalUsersCount();
             loadNotifications();
         }
@@ -269,15 +277,16 @@
         function loadTotalUsersCount() {
             onSnapshot(collection(db, "users"), (snapshot) => {
                 userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${snapshot.size} Users`;
-            });
+            }, (err) => console.log(err));
         }
 
+        // Dynamic Realtime Notifications Loading
         function loadNotifications() {
             const q = query(collection(db, "notifications"), orderBy("timestamp", "asc"));
 
             onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
-                if(spinner) spinner.remove();
+                if (spinner) spinner.remove();
 
                 messagesContainer.innerHTML = '';
 
@@ -287,10 +296,9 @@
                     const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
                     const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
 
-                    // Media Cards Generator
                     let mediaHTML = '';
                     if (data.mediaType === 'image' && data.mediaUrl) {
-                        mediaHTML = `<img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl my-2 border border-slate-200">`;
+                        mediaHTML = `<img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl my-2 border border-slate-200" loading="lazy">`;
                     } else if (data.mediaType === 'video' && data.mediaUrl) {
                         mediaHTML = `<video controls src="${data.mediaUrl}" class="w-full max-h-64 rounded-xl my-2 border border-slate-200"></video>`;
                     } else if (data.mediaType === 'pdf' && data.mediaUrl) {
@@ -299,7 +307,7 @@
                                 <i class="fas fa-file-pdf text-2xl text-emerald-600 mr-3"></i>
                                 <div class="flex-1 truncate">
                                     <div class="truncate">${data.fileName || 'PDF Document'}</div>
-                                    <div class="text-[10px] text-emerald-600 font-normal">देखने/डाउनलोड करने के लिए क्लिक करें</div>
+                                    <div class="text-[10px] text-emerald-600 font-normal">देखने के लिए क्लिक करें</div>
                                 </div>
                                 <i class="fas fa-download text-emerald-600 ml-2"></i>
                             </a>`;
@@ -332,7 +340,15 @@
                         </div>
                     `;
                 });
+
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                // Fire custom notification for newly appended message if not initial load
+                if (!isInitialLoad && snapshot.docChanges().some(change => change.type === "added")) {
+                    const latestDoc = snapshot.docs[snapshot.docs.length - 1]?.data();
+                    if(latestDoc) triggerCustomNotification(latestDoc.title, latestDoc.message);
+                }
+                isInitialLoad = false;
             });
         }
 
@@ -342,8 +358,8 @@
             }
         };
 
-        // Post Notification with Storage Upload
-        if(sendBtn) {
+        // Admin Send Post Logic Fix
+        if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
                 const message = document.getElementById('admin-msg-body').value.trim();
@@ -358,12 +374,11 @@
                 let fileName = '';
 
                 try {
-                    // Upload File to Firebase Storage if selected
                     if (selectedFile) {
                         fileName = selectedFile.name;
                         const storageRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
-                        await uploadBytes(storageRef, selectedFile);
-                        mediaUrl = await getDownloadURL(storageRef);
+                        const uploadResult = await uploadBytes(storageRef, selectedFile);
+                        mediaUrl = await getDownloadURL(uploadResult.ref);
 
                         if (selectedFile.type.startsWith('image/')) { mediaType = 'image'; }
                         else if (selectedFile.type.startsWith('video/')) { mediaType = 'video'; }
@@ -371,7 +386,6 @@
                         else { mediaType = 'file'; }
                     }
 
-                    // Save Notification to Firestore
                     await addDoc(collection(db, "notifications"), {
                         title: title || "महत्वपूर्ण सूचना",
                         message: message,
@@ -381,13 +395,12 @@
                         timestamp: serverTimestamp()
                     });
 
-                    // Reset Form
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
                     clearFileBtn.click();
 
                 } catch (err) {
-                    alert("अपलोड में समस्या आई: " + err.message);
+                    alert("अपलोड एरर: " + err.message);
                 } finally {
                     sendBtn.disabled = false;
                     uploadProgress.classList.add('hidden');
@@ -404,3 +417,4 @@
     </script>
 </body>
 </html>
+
