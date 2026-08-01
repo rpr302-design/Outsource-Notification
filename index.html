@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -67,7 +68,7 @@
         <!-- 2. Main Media Feed / Chat Screen -->
         <div id="chat-screen" class="hidden flex-col h-full wa-bg relative">
             
-            <!-- STICKY TOP HEADER (हमेशा ऊपर रहेगा) -->
+            <!-- STICKY TOP HEADER (हमेशा टॉप पर रहेगा) -->
             <div class="bg-teal-800 text-white px-4 py-3 flex items-center justify-between shadow-md sticky top-0 z-20">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center font-bold text-lg border border-white/20">
@@ -182,7 +183,7 @@
     <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
@@ -198,7 +199,6 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        const APP_CUSTOM_LOGO = "https://cdn-icons-png.flaticon.com/512/2950/2950650.png";
         const ADMIN_PHONE_NUMBER = "9993332211"; 
         
         let currentUser = null;
@@ -233,7 +233,6 @@
             return text.replace(urlPattern, (url) => `<a href="${url}" target="_blank" class="blue-link">${url}</a>`);
         }
 
-        // Gemini Style Attachment Toggles
         window.toggleAttachmentMenu = function() {
             attachmentMenu.classList.toggle('hidden');
         };
@@ -266,7 +265,6 @@
             }
         };
 
-        // Tab Switching System (Recent, All Messages, Media)
         window.switchTab = function(tabName) {
             activeTab = tabName;
             ['recent', 'all', 'media'].forEach(t => {
@@ -282,7 +280,6 @@
             renderFilteredNotifications();
         };
 
-        // Full Screen Media Modal Handler (पूरा देखने और डाउनलोड करने के लिए)
         window.openMediaModal = function(url, type, name) {
             const modal = document.getElementById('media-modal');
             const modalBody = document.getElementById('modal-body');
@@ -312,7 +309,6 @@
             document.getElementById('modal-body').innerHTML = '';
         };
 
-        // Social Media & WhatsApp Native Share
         window.shareNotification = function(title, text, url) {
             const shareData = {
                 title: title || "MP Outsource Update",
@@ -328,7 +324,6 @@
             }
         };
 
-        // Auto Login Logic
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) { showChatScreen(savedUser); }
 
@@ -390,8 +385,13 @@
             });
         }
 
+        // OPTIMIZED FIRESTORE READS (केवल अंतिम 15 आइटम ही मंगवाएगा)
         function loadNotifications() {
-            const q = query(collection(db, "notifications"), orderBy("timestamp", "asc"));
+            const q = query(
+                collection(db, "notifications"), 
+                orderBy("timestamp", "desc"), 
+                limit(15) // Reads को नियंत्रित करने के लिए
+            );
 
             onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
@@ -402,21 +402,20 @@
                     allNotificationsData.push({ id: docSnap.id, ...docSnap.data() });
                 });
 
+                // क्रमानुसार सही ऑर्डर के लिए रिवर्स करें
+                allNotificationsData.reverse();
                 renderFilteredNotifications();
             });
         }
 
-        // Render Stream Based on Selected Tab
         function renderFilteredNotifications() {
             messagesContainer.innerHTML = '';
 
             let dataToDisplay = [...allNotificationsData];
 
             if (activeTab === 'recent') {
-                // केवल अंतिम 2 संदेश दिखाएगा
                 dataToDisplay = dataToDisplay.slice(-2);
             } else if (activeTab === 'media') {
-                // केवल फ़ाइलों/मीडिया वाले संदेश दिखाएगा
                 dataToDisplay = dataToDisplay.filter(item => item.mediaUrl && item.mediaType !== 'none');
             }
 
@@ -486,7 +485,6 @@
                         
                         ${mediaHTML}
 
-                        <!-- Bottom Action Bar (Share Button) -->
                         <div class="mt-2.5 pt-2 border-t border-slate-100 flex justify-end items-center">
                             <button onclick="shareNotification('${data.title || ''}', '${data.message || ''}', '${data.mediaUrl || ''}')" class="text-teal-700 hover:text-teal-900 text-xs font-bold flex items-center bg-teal-50 px-2.5 py-1 rounded-lg">
                                 <i class="fas fa-share-alt mr-1"></i> शेयर करें
@@ -505,7 +503,6 @@
             }
         };
 
-        // Post Message and Upload File
         if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
