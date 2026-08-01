@@ -21,11 +21,11 @@
     <!-- App Container -->
     <div class="w-full max-w-md bg-white h-full sm:h-[720px] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-slate-700/50">
 
-        <!-- Notification Blocked Warning Banner -->
-        <div id="blocked-banner" class="hidden bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md z-20">
+        <!-- Notification Blocked Banner -->
+        <div id="blocked-banner" class="hidden bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md z-30">
             <div class="flex items-center space-x-2">
                 <i class="fas fa-bell-slash text-base"></i>
-                <span>नोटिफिकेशन बंद हैं! अपडेट्स पाने के लिए Allow करें।</span>
+                <span>नोटिफिकेशन बंद हैं! अपडेट्स पाने के लिए अनब्लॉक करें।</span>
             </div>
             <button onclick="requestNotificationPermission()" class="bg-slate-900 px-2 py-1 rounded text-[10px] font-bold">Unblock</button>
         </div>
@@ -65,10 +65,10 @@
         </div>
 
         <!-- 2. Main Media Feed / Chat Screen -->
-        <div id="chat-screen" class="hidden flex-col h-full wa-bg">
+        <div id="chat-screen" class="hidden flex-col h-full wa-bg relative">
             
-            <!-- Header -->
-            <div class="bg-teal-800 text-white px-4 py-3 flex items-center justify-between shadow-md z-10">
+            <!-- STICKY TOP HEADER (हमेशा ऊपर रहेगा) -->
+            <div class="bg-teal-800 text-white px-4 py-3 flex items-center justify-between shadow-md sticky top-0 z-20">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center font-bold text-lg border border-white/20">
                         <i class="fas fa-users"></i>
@@ -87,7 +87,20 @@
                 </button>
             </div>
 
-            <!-- Messages Stream -->
+            <!-- TAB NAVIGATION SYSTEM (हालिया, सभी मैसेज, मीडिया) -->
+            <div class="bg-teal-900 text-teal-100 flex justify-around text-xs font-bold border-t border-teal-700/50 shadow-inner z-10">
+                <button onclick="switchTab('recent')" id="tab-recent" class="py-2.5 px-3 flex-1 text-center border-b-2 border-teal-300 text-white transition">
+                    💬 हालिया (2)
+                </button>
+                <button onclick="switchTab('all')" id="tab-all" class="py-2.5 px-3 flex-1 text-center border-b-2 border-transparent text-teal-300 hover:text-white transition">
+                    📜 सभी मैसेज
+                </button>
+                <button onclick="switchTab('media')" id="tab-media" class="py-2.5 px-3 flex-1 text-center border-b-2 border-transparent text-teal-300 hover:text-white transition">
+                    🖼️ मीडिया फ़ाइलें
+                </button>
+            </div>
+
+            <!-- Messages Stream Container -->
             <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3">
                 <div id="loading-spinner" class="text-center py-10 text-slate-500">
                     <i class="fas fa-circle-notch fa-spin text-2xl text-teal-600"></i>
@@ -95,64 +108,103 @@
                 </div>
             </div>
 
-            <!-- Admin Input Box -->
-            <div id="admin-input-box" class="hidden bg-white p-3 border-t border-slate-300 flex-col space-y-2 shadow-2xl">
+            <!-- Admin Input Box with Gemini Style Attachment Upload -->
+            <div id="admin-input-box" class="hidden bg-white p-3 border-t border-slate-300 flex-col space-y-2 shadow-2xl z-20">
                 <input type="text" id="admin-msg-title" placeholder="📌 शीर्षक (Title)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 font-bold">
                 
-                <textarea id="admin-msg-body" rows="2" placeholder="💬 संदेश लिखें..." class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"></textarea>
+                <div class="flex items-center space-x-2 relative">
+                    <!-- Gemini Style Attachment (+) Toggle Button -->
+                    <button type="button" onclick="toggleAttachmentMenu()" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-teal-50 text-teal-700 border border-slate-300 flex items-center justify-center transition shadow-sm">
+                        <i class="fas fa-plus text-base"></i>
+                    </button>
 
-                <div class="flex items-center space-x-2">
-                    <label class="flex-1 flex items-center justify-center px-3 py-2 border border-dashed border-teal-600 bg-teal-50 text-teal-700 rounded-lg text-xs font-bold cursor-pointer hover:bg-teal-100 transition">
-                        <i class="fas fa-paperclip text-sm mr-2"></i>
-                        <span id="file-label">गैलरी/फ़ाइल से अपलोड करें</span>
-                        <input type="file" id="admin-file-input" class="hidden" accept="image/*,video/*,.pdf,.xlsx,.doc,.docx">
-                    </label>
-                    <button id="clear-file-btn" class="hidden text-rose-500 p-2 text-xs" title="फ़ाइल हटाएं"><i class="fas fa-times-circle text-base"></i></button>
+                    <textarea id="admin-msg-body" rows="1" placeholder="💬 संदेश लिखें..." class="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"></textarea>
+
+                    <button id="send-btn" class="bg-teal-700 hover:bg-teal-800 text-white font-bold p-2.5 rounded-lg text-xs flex justify-center items-center shadow">
+                        <i class="fas fa-paper-plane text-sm"></i>
+                    </button>
+
+                    <!-- Hidden File Input -->
+                    <input type="file" id="admin-file-input" class="hidden" accept="image/*,video/*,.pdf,.xlsx,.doc,.docx">
+                </div>
+
+                <!-- Gemini Attachment Menu Popup -->
+                <div id="attachment-menu" class="hidden absolute bottom-16 left-3 bg-white p-3 rounded-2xl shadow-2xl border border-slate-200 flex space-x-4 z-30">
+                    <button type="button" onclick="triggerFileSelect('image/*')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
+                        <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-image"></i></div>
+                        फोटो
+                    </button>
+                    <button type="button" onclick="triggerFileSelect('video/*')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
+                        <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-video"></i></div>
+                        वीडियो
+                    </button>
+                    <button type="button" onclick="triggerFileSelect('.pdf,.doc,.docx,.xlsx')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-file-pdf"></i></div>
+                        डॉक्यूमेंट
+                    </button>
+                </div>
+
+                <!-- File Preview Label -->
+                <div id="file-preview-bar" class="hidden flex items-center justify-between bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-200 text-xs text-teal-800">
+                    <span id="file-label" class="truncate font-semibold">फाइल चुनी गई</span>
+                    <button id="clear-file-btn" class="text-rose-500 p-1"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div id="upload-progress" class="hidden text-[11px] font-bold text-teal-700 text-center py-1 bg-teal-50 rounded">
                     <i class="fas fa-spinner fa-spin mr-1"></i> अपलोड हो रहा है...
                 </div>
-
-                <button id="send-btn" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-xl text-xs flex justify-center items-center shadow">
-                    <i class="fas fa-paper-plane mr-2"></i> ब्रॉडकास्ट पोस्ट करें
-                </button>
             </div>
 
             <!-- User Footer -->
-            <div id="user-footer" class="bg-slate-200 px-4 py-2.5 text-center text-[11px] text-slate-600 border-t">
+            <div id="user-footer" class="bg-slate-200 px-4 py-2.5 text-center text-[11px] text-slate-600 border-t z-10">
                 <i class="fas fa-info-circle mr-1"></i> केवल एडमिन मीडिया फ़ाइलें शेयर कर सकते हैं।
             </div>
         </div>
 
     </div>
 
-    <!-- Firebase v10 SDK (Compat & Modular Mix to ensure absolute compatibility) -->
+    <!-- Media Full Screen Viewer Modal (पूरा देखने और डाउनलोड करने के लिए) -->
+    <div id="media-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex-col items-center justify-between p-4">
+        <div class="w-full flex justify-between items-center text-white">
+            <span id="modal-title" class="text-xs font-bold truncate max-w-[70%]">मीडिया व्यूअर</span>
+            <div class="flex items-center space-x-3">
+                <a id="modal-download-btn" href="#" download target="_blank" class="bg-teal-600 hover:bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow">
+                    <i class="fas fa-download mr-1"></i> डाउनलोड
+                </a>
+                <button onclick="closeMediaModal()" class="text-white text-2xl p-2"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4">
+            <!-- Dynamic Content Load Here -->
+        </div>
+    </div>
+
+    <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
-    apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
-    authDomain: "push-notifaction-c3460.firebaseapp.com",
-    projectId: "push-notifaction-c3460",
-    storageBucket: "push-notifaction-c3460.firebasestorage.app", // exact match from console
-    messagingSenderId: "649136234508",
-    appId: "1:649136234508:web:39b8e06150890d360ace29"
-};
+            apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
+            authDomain: "push-notifaction-c3460.firebaseapp.com",
+            projectId: "push-notifaction-c3460",
+            storageBucket: "push-notifaction-c3460.firebasestorage.app",
+            messagingSenderId: "649136234508",
+            appId: "1:649136234508:web:39b8e06150890d360ace29"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        // कस्टम लोगो URL (Chrome Icon की जगह यह दिखेगा)
         const APP_CUSTOM_LOGO = "https://cdn-icons-png.flaticon.com/512/2950/2950650.png";
-
         const ADMIN_PHONE_NUMBER = "9993332211"; 
+        
         let currentUser = null;
         let selectedFile = null;
-        let isInitialLoad = true;
+        let allNotificationsData = [];
+        let activeTab = 'recent';
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -172,6 +224,8 @@
         const clearFileBtn = document.getElementById('clear-file-btn');
         const uploadProgress = document.getElementById('upload-progress');
         const blockedBanner = document.getElementById('blocked-banner');
+        const attachmentMenu = document.getElementById('attachment-menu');
+        const filePreviewBar = document.getElementById('file-preview-bar');
 
         function formatMessageText(text) {
             if (!text) return '';
@@ -179,45 +233,102 @@
             return text.replace(urlPattern, (url) => `<a href="${url}" target="_blank" class="blue-link">${url}</a>`);
         }
 
+        // Gemini Style Attachment Toggles
+        window.toggleAttachmentMenu = function() {
+            attachmentMenu.classList.toggle('hidden');
+        };
+
+        window.triggerFileSelect = function(acceptType) {
+            fileInput.accept = acceptType;
+            fileInput.click();
+            attachmentMenu.classList.add('hidden');
+        };
+
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 selectedFile = e.target.files[0];
-                fileLabel.innerText = `फ़ाइल: ${selectedFile.name.substring(0, 18)}...`;
-                clearFileBtn.classList.remove('hidden');
+                fileLabel.innerText = `चुनी फ़ाइल: ${selectedFile.name.substring(0, 20)}...`;
+                filePreviewBar.classList.remove('hidden');
             }
         });
 
         clearFileBtn.addEventListener('click', () => {
             selectedFile = null;
             fileInput.value = '';
-            fileLabel.innerText = 'गैलरी/फ़ाइल से अपलोड करें';
-            clearFileBtn.classList.add('hidden');
+            filePreviewBar.classList.add('hidden');
         });
 
-        // Notification Permission Prompt
         window.requestNotificationPermission = async function() {
             if ("Notification" in window) {
                 const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    blockedBanner.classList.add('hidden');
-                } else {
-                    blockedBanner.classList.remove('hidden');
-                }
+                if (permission === 'granted') blockedBanner.classList.add('hidden');
+                else blockedBanner.classList.remove('hidden');
             }
         };
 
-        // Custom Notification Generator (Chrome Logo Fix)
-        function triggerCustomNotification(title, body) {
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title || "MP Outsource Update", {
-                    body: body || "नया संदेश आया है!",
-                    icon: APP_CUSTOM_LOGO, // Chrome logo Replace
-                    badge: APP_CUSTOM_LOGO
-                });
-            }
-        }
+        // Tab Switching System (Recent, All Messages, Media)
+        window.switchTab = function(tabName) {
+            activeTab = tabName;
+            ['recent', 'all', 'media'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tabName) {
+                    btn.classList.add('border-teal-300', 'text-white');
+                    btn.classList.remove('border-transparent', 'text-teal-300');
+                } else {
+                    btn.classList.remove('border-teal-300', 'text-white');
+                    btn.classList.add('border-transparent', 'text-teal-300');
+                }
+            });
+            renderFilteredNotifications();
+        };
 
-        // Auto Login
+        // Full Screen Media Modal Handler (पूरा देखने और डाउनलोड करने के लिए)
+        window.openMediaModal = function(url, type, name) {
+            const modal = document.getElementById('media-modal');
+            const modalBody = document.getElementById('modal-body');
+            const modalTitle = document.getElementById('modal-title');
+            const modalDownloadBtn = document.getElementById('modal-download-btn');
+
+            modalTitle.innerText = name || "मीडिया फ़ाइल";
+            modalDownloadBtn.href = url;
+            modalBody.innerHTML = '';
+
+            if (type === 'image') {
+                modalBody.innerHTML = `<img src="${url}" class="max-w-full max-h-full object-contain rounded-lg">`;
+            } else if (type === 'video') {
+                modalBody.innerHTML = `<video controls src="${url}" class="max-w-full max-h-full rounded-lg" autoplay></video>`;
+            } else if (type === 'pdf') {
+                modalBody.innerHTML = `<iframe src="${url}" class="w-full h-full rounded-lg bg-white"></iframe>`;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeMediaModal = function() {
+            const modal = document.getElementById('media-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('modal-body').innerHTML = '';
+        };
+
+        // Social Media & WhatsApp Native Share
+        window.shareNotification = function(title, text, url) {
+            const shareData = {
+                title: title || "MP Outsource Update",
+                text: `${title ? title + '\n' : ''}${text || ''}\n`,
+                url: url || window.location.href
+            };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(() => {});
+            } else {
+                const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareData.text + shareData.url)}`;
+                window.open(waUrl, '_blank');
+            }
+        };
+
+        // Auto Login Logic
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) { showChatScreen(savedUser); }
 
@@ -229,7 +340,7 @@
             if (phone.length !== 10) { alert('सही 10 अंकों का नंबर लिखें!'); return; }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> लॉगिन हो रहा है...`;
+            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> चेक हो रहा है...`;
 
             try {
                 const usersRef = collection(db, "users");
@@ -249,10 +360,9 @@
                 localStorage.setItem('notification_user', JSON.stringify(userData));
                 showChatScreen(userData);
             } catch (error) {
-                alert("लॉगिन में समस्या आई: " + error.message);
+                alert("साइन इन एरर: " + error.message);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<span>साइन इन करें</span> <i class="fas fa-arrow-right ml-2"></i>`;
             }
         });
 
@@ -277,10 +387,9 @@
         function loadTotalUsersCount() {
             onSnapshot(collection(db, "users"), (snapshot) => {
                 userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${snapshot.size} Users`;
-            }, (err) => console.log(err));
+            });
         }
 
-        // Dynamic Realtime Notifications Loading
         function loadNotifications() {
             const q = query(collection(db, "notifications"), orderBy("timestamp", "asc"));
 
@@ -288,68 +397,106 @@
                 const spinner = document.getElementById('loading-spinner');
                 if (spinner) spinner.remove();
 
-                messagesContainer.innerHTML = '';
-
+                allNotificationsData = [];
                 snapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    const docId = docSnap.id;
-                    const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
-                    const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
-
-                    let mediaHTML = '';
-                    if (data.mediaType === 'image' && data.mediaUrl) {
-                        mediaHTML = `<img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl my-2 border border-slate-200" loading="lazy">`;
-                    } else if (data.mediaType === 'video' && data.mediaUrl) {
-                        mediaHTML = `<video controls src="${data.mediaUrl}" class="w-full max-h-64 rounded-xl my-2 border border-slate-200"></video>`;
-                    } else if (data.mediaType === 'pdf' && data.mediaUrl) {
-                        mediaHTML = `
-                            <a href="${data.mediaUrl}" target="_blank" class="flex items-center p-3 my-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-bold hover:bg-emerald-100">
-                                <i class="fas fa-file-pdf text-2xl text-emerald-600 mr-3"></i>
-                                <div class="flex-1 truncate">
-                                    <div class="truncate">${data.fileName || 'PDF Document'}</div>
-                                    <div class="text-[10px] text-emerald-600 font-normal">देखने के लिए क्लिक करें</div>
-                                </div>
-                                <i class="fas fa-download text-emerald-600 ml-2"></i>
-                            </a>`;
-                    } else if (data.mediaType === 'file' && data.mediaUrl) {
-                        mediaHTML = `
-                            <a href="${data.mediaUrl}" target="_blank" class="flex items-center p-3 my-2 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-800 font-bold hover:bg-blue-100">
-                                <i class="fas fa-file-alt text-2xl text-blue-600 mr-3"></i>
-                                <div class="flex-1 truncate">
-                                    <div class="truncate">${data.fileName || 'Attached File'}</div>
-                                    <div class="text-[10px] text-blue-600 font-normal">डाउनलोड करें</div>
-                                </div>
-                                <i class="fas fa-download text-blue-600 ml-2"></i>
-                            </a>`;
-                    }
-
-                    messagesContainer.innerHTML += `
-                        <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 max-w-[92%] my-2 relative">
-                            <div class="text-xs font-bold text-teal-800 mb-1 flex justify-between items-center">
-                                <span>📢 Admin Notification</span>
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
-                                    ${isAdmin ? `<button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1"><i class="fas fa-trash-alt"></i></button>` : ''}
-                                </div>
-                            </div>
-                            
-                            ${data.title ? `<h4 class="font-bold text-sm text-slate-900 mb-1">${data.title}</h4>` : ''}
-                            <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">${formatMessageText(data.message)}</p>
-                            
-                            ${mediaHTML}
-                        </div>
-                    `;
+                    allNotificationsData.push({ id: docSnap.id, ...docSnap.data() });
                 });
 
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                // Fire custom notification for newly appended message if not initial load
-                if (!isInitialLoad && snapshot.docChanges().some(change => change.type === "added")) {
-                    const latestDoc = snapshot.docs[snapshot.docs.length - 1]?.data();
-                    if(latestDoc) triggerCustomNotification(latestDoc.title, latestDoc.message);
-                }
-                isInitialLoad = false;
+                renderFilteredNotifications();
             });
+        }
+
+        // Render Stream Based on Selected Tab
+        function renderFilteredNotifications() {
+            messagesContainer.innerHTML = '';
+
+            let dataToDisplay = [...allNotificationsData];
+
+            if (activeTab === 'recent') {
+                // केवल अंतिम 2 संदेश दिखाएगा
+                dataToDisplay = dataToDisplay.slice(-2);
+            } else if (activeTab === 'media') {
+                // केवल फ़ाइलों/मीडिया वाले संदेश दिखाएगा
+                dataToDisplay = dataToDisplay.filter(item => item.mediaUrl && item.mediaType !== 'none');
+            }
+
+            if (dataToDisplay.length === 0) {
+                messagesContainer.innerHTML = `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-folder-open text-3xl mb-2"></i><br>यहाँ कोई फ़ाइल या संदेश उपलब्ध नहीं है।</div>`;
+                return;
+            }
+
+            dataToDisplay.forEach((data) => {
+                const docId = data.id;
+                const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
+                const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
+
+                let mediaHTML = '';
+                if (data.mediaType === 'image' && data.mediaUrl) {
+                    mediaHTML = `
+                        <div class="relative group my-2 cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'image', '${data.fileName || 'Image'}')">
+                            <img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl border border-slate-200">
+                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-xl text-white font-bold text-xs">
+                                <i class="fas fa-search-plus mr-1"></i> पूरा देखें
+                            </div>
+                        </div>`;
+                } else if (data.mediaType === 'video' && data.mediaUrl) {
+                    mediaHTML = `
+                        <div class="my-2">
+                            <video controls src="${data.mediaUrl}" class="w-full max-h-64 rounded-xl border border-slate-200"></video>
+                            <button onclick="openMediaModal('${data.mediaUrl}', 'video', '${data.fileName || 'Video'}')" class="mt-1 text-[11px] text-teal-700 font-bold flex items-center">
+                                <i class="fas fa-expand mr-1"></i> फ़ुल स्क्रीन में देखें
+                            </button>
+                        </div>`;
+                } else if (data.mediaType === 'pdf' && data.mediaUrl) {
+                    mediaHTML = `
+                        <div class="flex items-center justify-between p-3 my-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-bold">
+                            <div class="flex items-center truncate mr-2 cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'pdf', '${data.fileName || 'PDF'}')">
+                                <i class="fas fa-file-pdf text-2xl text-emerald-600 mr-2"></i>
+                                <span class="truncate">${data.fileName || 'PDF Document'}</span>
+                            </div>
+                            <a href="${data.mediaUrl}" download target="_blank" class="p-2 bg-emerald-600 text-white rounded-lg text-[10px] hover:bg-emerald-700">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>`;
+                } else if (data.mediaType === 'file' && data.mediaUrl) {
+                    mediaHTML = `
+                        <div class="flex items-center justify-between p-3 my-2 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-800 font-bold">
+                            <div class="flex items-center truncate mr-2">
+                                <i class="fas fa-file-alt text-2xl text-blue-600 mr-2"></i>
+                                <span class="truncate">${data.fileName || 'Document File'}</span>
+                            </div>
+                            <a href="${data.mediaUrl}" download target="_blank" class="p-2 bg-blue-600 text-white rounded-lg text-[10px] hover:bg-blue-700">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>`;
+                }
+
+                messagesContainer.innerHTML += `
+                    <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 max-w-[95%] my-2 relative mx-auto">
+                        <div class="text-xs font-bold text-teal-800 mb-1 flex justify-between items-center">
+                            <span>📢 Admin Notification</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
+                                ${isAdmin ? `<button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1"><i class="fas fa-trash-alt"></i></button>` : ''}
+                            </div>
+                        </div>
+                        
+                        ${data.title ? `<h4 class="font-bold text-sm text-slate-900 mb-1">${data.title}</h4>` : ''}
+                        <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">${formatMessageText(data.message)}</p>
+                        
+                        ${mediaHTML}
+
+                        <!-- Bottom Action Bar (Share Button) -->
+                        <div class="mt-2.5 pt-2 border-t border-slate-100 flex justify-end items-center">
+                            <button onclick="shareNotification('${data.title || ''}', '${data.message || ''}', '${data.mediaUrl || ''}')" class="text-teal-700 hover:text-teal-900 text-xs font-bold flex items-center bg-teal-50 px-2.5 py-1 rounded-lg">
+                                <i class="fas fa-share-alt mr-1"></i> शेयर करें
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         window.deleteNotification = async function(docId) {
@@ -358,7 +505,7 @@
             }
         };
 
-        // Admin Send Post Logic Fix
+        // Post Message and Upload File
         if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
@@ -380,10 +527,10 @@
                         const uploadResult = await uploadBytes(storageRef, selectedFile);
                         mediaUrl = await getDownloadURL(uploadResult.ref);
 
-                        if (selectedFile.type.startsWith('image/')) { mediaType = 'image'; }
-                        else if (selectedFile.type.startsWith('video/')) { mediaType = 'video'; }
-                        else if (selectedFile.type.includes('pdf')) { mediaType = 'pdf'; }
-                        else { mediaType = 'file'; }
+                        if (selectedFile.type.startsWith('image/')) mediaType = 'image';
+                        else if (selectedFile.type.startsWith('video/')) mediaType = 'video';
+                        else if (selectedFile.type.includes('pdf')) mediaType = 'pdf';
+                        else mediaType = 'file';
                     }
 
                     await addDoc(collection(db, "notifications"), {
@@ -417,4 +564,3 @@
     </script>
 </body>
 </html>
-
