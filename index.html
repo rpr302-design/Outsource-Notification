@@ -41,7 +41,6 @@
             </div>
 
             <form id="login-form" class="space-y-4 my-auto">
-                <!-- Step 1: Mobile Number Field (Always First) -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर (10 अंक)</label>
                     <div class="flex space-x-2">
@@ -50,7 +49,6 @@
                     </div>
                 </div>
 
-                <!-- Step 2: New User Details (Shown only if Number is NOT registered) -->
                 <div id="new-user-fields" class="hidden space-y-4 border-t border-slate-800 pt-3">
                     <div class="bg-teal-900/40 p-2.5 rounded-lg border border-teal-500/30 text-[11px] text-teal-300 flex items-center">
                         <i class="fas fa-user-plus mr-2 text-sm"></i> नया नंबर मिला! कृपया अपना खाता बनाने के लिए नाम व जेंडर चुनें:
@@ -71,8 +69,7 @@
                     </div>
                 </div>
 
-                <button type="submit" id="submit-btn"
-                        class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center text-sm transition">
+                <button type="submit" id="submit-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center text-sm transition">
                     <span id="submit-btn-text">आगे बढ़ें / लॉगिन करें</span> <i class="fas fa-arrow-right ml-2"></i>
                 </button>
             </form>
@@ -341,7 +338,6 @@
             }
         };
 
-        // Reset flow if user changes phone input mid-way
         userPhoneInput.addEventListener('input', () => {
             if (pendingNewUserCheck) {
                 pendingNewUserCheck = false;
@@ -351,7 +347,6 @@
             }
         });
 
-        // Smart Login & Registration Handler
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
@@ -361,7 +356,6 @@
             submitBtn.disabled = true;
 
             try {
-                // If not yet verified whether user is existing or new
                 if (!pendingNewUserCheck) {
                     submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> नंबर जांच रहे हैं...`;
 
@@ -370,7 +364,6 @@
                     const querySnapshot = await getDocs(q);
 
                     if (!querySnapshot.empty) {
-                        // EXISTING USER: Direct Login
                         const existingDoc = querySnapshot.docs[0];
                         const userData = {
                             name: existingDoc.data().name || "यूज़र",
@@ -383,14 +376,12 @@
                         localStorage.setItem('notification_user', JSON.stringify(userData));
                         showChatScreen(userData);
                     } else {
-                        // NEW USER: Show Name & Gender Input Fields
                         pendingNewUserCheck = true;
                         newUserFields.classList.remove('hidden');
                         userNameInput.required = true;
                         submitBtnText.innerText = "अकाउंट बनाएँ और साइन इन करें";
                     }
                 } else {
-                    // CREATE NEW USER ACCOUNT
                     const name = userNameInput.value.trim();
                     const gender = userGenderInput.value;
 
@@ -398,7 +389,6 @@
 
                     submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
 
-                    // Double check to strictly prevent duplicate account creation
                     const usersRef = collection(db, "users");
                     const q = query(usersRef, where("phone", "==", phone));
                     const checkSnap = await getDocs(q);
@@ -428,7 +418,6 @@
             }
         });
 
-        // Auto Login from Local Storage
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) { showChatScreen(savedUser); }
 
@@ -446,19 +435,36 @@
             }
 
             requestNotificationPermission();
-            loadTotalUsersCount();
+            loadTotalUsersCountOnceDaily();
             loadNotifications();
         }
 
-        function loadTotalUsersCount() {
-            onSnapshot(collection(db, "users"), (snapshot) => {
-                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${snapshot.size} Users`;
-            });
+        // 🟢 FIX 1: 24 घंटे में केवल 1 बार Firebase से User Count फ़ेच करेगा
+        async function loadTotalUsersCountOnceDaily() {
+            const cachedCount = localStorage.getItem('user_count_cache');
+            const lastFetchedTime = localStorage.getItem('user_count_last_fetched');
+            const now = Date.now();
+            const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 Hours in milliseconds
+
+            if (cachedCount && lastFetchedTime && (now - parseInt(lastFetchedTime)) < ONE_DAY_MS) {
+                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
+                return;
+            }
+
+            try {
+                const snapshot = await getDocs(collection(db, "users"));
+                const count = snapshot.size;
+                localStorage.setItem('user_count_cache', count);
+                localStorage.setItem('user_count_last_fetched', now.toString());
+                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${count} Users`;
+            } catch (e) {
+                if (cachedCount) {
+                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
+                }
+            }
         }
 
-        // READ-OPTIMIZED CACHED CHAT STREAM (Local Storage Integration)
         function loadNotifications() {
-            // 1. First Load Cached Messages from LocalStorage immediately (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -469,7 +475,6 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // 2. Query Firestore only for the last 15 items to update cache & sync new posts
             const q = query(
                 collection(db, "notifications"), 
                 orderBy("timestamp", "desc"), 
@@ -485,6 +490,7 @@
                     const data = docSnap.data();
                     fetchedData.push({
                         id: docSnap.id,
+                        adminName: data.adminName || 'Admin Notification', // Admin Name
                         title: data.title || '',
                         message: data.message || '',
                         mediaUrl: data.mediaUrl || null,
@@ -497,7 +503,6 @@
                 fetchedData.reverse();
                 allNotificationsData = fetchedData;
 
-                // Save to LocalStorage to minimize future DB Reads
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
@@ -565,10 +570,11 @@
                         </div>`;
                 }
 
+                // 🟢 FIX 2: Admin Notification की जगह पोस्ट करने वाले Admin का Name दिखेगा
                 messagesContainer.innerHTML += `
                     <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 max-w-[95%] my-2 relative mx-auto">
                         <div class="text-xs font-bold text-teal-800 mb-1 flex justify-between items-center">
-                            <span>📢 Admin Notification</span>
+                            <span>📢 ${data.adminName || 'Admin Notification'}</span>
                             <div class="flex items-center space-x-2">
                                 <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
                                 ${isAdmin ? `<button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1"><i class="fas fa-trash-alt"></i></button>` : ''}
@@ -625,7 +631,9 @@
                         else mediaType = 'file';
                     }
 
+                    // 🟢 Post with Admin Name
                     await addDoc(collection(db, "notifications"), {
+                        adminName: currentUser ? currentUser.name : "Admin",
                         title: title || "महत्वपूर्ण सूचना",
                         message: message,
                         mediaUrl: mediaUrl,
