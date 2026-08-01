@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -31,7 +30,7 @@
             <button onclick="requestNotificationPermission()" class="bg-slate-900 px-2 py-1 rounded text-[10px] font-bold">Unblock</button>
         </div>
 
-        <!-- 1. Registration / Login Screen -->
+        <!-- 1. Smart Registration / Login Screen -->
         <div id="registration-screen" class="p-8 flex flex-col justify-between h-full bg-slate-900 text-white">
             <div class="text-center mt-6">
                 <div class="w-20 h-20 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center mx-auto mb-4">
@@ -42,21 +41,39 @@
             </div>
 
             <form id="login-form" class="space-y-4 my-auto">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">आपका नाम</label>
-                    <input type="text" id="user-name" required placeholder="जैसे: रोशन प्रजापति" 
-                           class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
-                </div>
-
+                <!-- Step 1: Mobile Number Field (Always First) -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर (10 अंक)</label>
-                    <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर" 
-                           class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                    <div class="flex space-x-2">
+                        <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर लिखें" 
+                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Step 2: New User Details (Shown only if Number is NOT registered) -->
+                <div id="new-user-fields" class="hidden space-y-4 border-t border-slate-800 pt-3">
+                    <div class="bg-teal-900/40 p-2.5 rounded-lg border border-teal-500/30 text-[11px] text-teal-300 flex items-center">
+                        <i class="fas fa-user-plus mr-2 text-sm"></i> नया नंबर मिला! कृपया अपना खाता बनाने के लिए नाम व जेंडर चुनें:
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">आपका पूरा नाम</label>
+                        <input type="text" id="user-name" placeholder="जैसे: रोशन प्रजापति" 
+                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">जेंडर (Gender)</label>
+                        <select id="user-gender" class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                            <option value="Male">पुरुष (Male)</option>
+                            <option value="Female">महिला (Female)</option>
+                            <option value="Other">अन्य (Other)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <button type="submit" id="submit-btn"
                         class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center text-sm transition">
-                    <span>साइन इन करें</span> <i class="fas fa-arrow-right ml-2"></i>
+                    <span id="submit-btn-text">आगे बढ़ें / लॉगिन करें</span> <i class="fas fa-arrow-right ml-2"></i>
                 </button>
             </form>
 
@@ -68,7 +85,7 @@
         <!-- 2. Main Media Feed / Chat Screen -->
         <div id="chat-screen" class="hidden flex-col h-full wa-bg relative">
             
-            <!-- STICKY TOP HEADER (हमेशा टॉप पर रहेगा) -->
+            <!-- STICKY TOP HEADER -->
             <div class="bg-teal-800 text-white px-4 py-3 flex items-center justify-between shadow-md sticky top-0 z-20">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center font-bold text-lg border border-white/20">
@@ -88,7 +105,7 @@
                 </button>
             </div>
 
-            <!-- TAB NAVIGATION SYSTEM (हालिया, सभी मैसेज, मीडिया) -->
+            <!-- TAB NAVIGATION SYSTEM -->
             <div class="bg-teal-900 text-teal-100 flex justify-around text-xs font-bold border-t border-teal-700/50 shadow-inner z-10">
                 <button onclick="switchTab('recent')" id="tab-recent" class="py-2.5 px-3 flex-1 text-center border-b-2 border-teal-300 text-white transition">
                     💬 हालिया (2)
@@ -114,7 +131,6 @@
                 <input type="text" id="admin-msg-title" placeholder="📌 शीर्षक (Title)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 font-bold">
                 
                 <div class="flex items-center space-x-2 relative">
-                    <!-- Gemini Style Attachment (+) Toggle Button -->
                     <button type="button" onclick="toggleAttachmentMenu()" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-teal-50 text-teal-700 border border-slate-300 flex items-center justify-center transition shadow-sm">
                         <i class="fas fa-plus text-base"></i>
                     </button>
@@ -125,7 +141,6 @@
                         <i class="fas fa-paper-plane text-sm"></i>
                     </button>
 
-                    <!-- Hidden File Input -->
                     <input type="file" id="admin-file-input" class="hidden" accept="image/*,video/*,.pdf,.xlsx,.doc,.docx">
                 </div>
 
@@ -164,7 +179,7 @@
 
     </div>
 
-    <!-- Media Full Screen Viewer Modal (पूरा देखने और डाउनलोड करने के लिए) -->
+    <!-- Media Full Screen Viewer Modal -->
     <div id="media-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex-col items-center justify-between p-4">
         <div class="w-full flex justify-between items-center text-white">
             <span id="modal-title" class="text-xs font-bold truncate max-w-[70%]">मीडिया व्यूअर</span>
@@ -175,9 +190,7 @@
                 <button onclick="closeMediaModal()" class="text-white text-2xl p-2"><i class="fas fa-times"></i></button>
             </div>
         </div>
-        <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4">
-            <!-- Dynamic Content Load Here -->
-        </div>
+        <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4"></div>
     </div>
 
     <!-- Firebase v10 SDK -->
@@ -205,13 +218,17 @@
         let selectedFile = null;
         let allNotificationsData = [];
         let activeTab = 'recent';
+        let pendingNewUserCheck = false;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
         const loginForm = document.getElementById('login-form');
         const userNameInput = document.getElementById('user-name');
         const userPhoneInput = document.getElementById('user-phone');
+        const userGenderInput = document.getElementById('user-gender');
+        const newUserFields = document.getElementById('new-user-fields');
         const submitBtn = document.getElementById('submit-btn');
+        const submitBtnText = document.getElementById('submit-btn-text');
         const messagesContainer = document.getElementById('messages-container');
         const welcomeUserText = document.getElementById('welcome-user');
         const userCountBadge = document.getElementById('user-count-badge');
@@ -324,42 +341,96 @@
             }
         };
 
-        const savedUser = JSON.parse(localStorage.getItem('notification_user'));
-        if (savedUser) { showChatScreen(savedUser); }
+        // Reset flow if user changes phone input mid-way
+        userPhoneInput.addEventListener('input', () => {
+            if (pendingNewUserCheck) {
+                pendingNewUserCheck = false;
+                newUserFields.classList.add('hidden');
+                userNameInput.required = false;
+                submitBtnText.innerText = "आगे बढ़ें / लॉगिन करें";
+            }
+        });
 
+        // Smart Login & Registration Handler
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const name = userNameInput.value.trim();
             const phone = userPhoneInput.value.trim();
 
-            if (phone.length !== 10) { alert('सही 10 अंकों का नंबर लिखें!'); return; }
+            if (phone.length !== 10) { alert('कृपया सही 10 अंकों का नंबर लिखें!'); return; }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> चेक हो रहा है...`;
 
             try {
-                const usersRef = collection(db, "users");
-                const q = query(usersRef, where("phone", "==", phone));
-                const querySnapshot = await getDocs(q);
+                // If not yet verified whether user is existing or new
+                if (!pendingNewUserCheck) {
+                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> नंबर जांच रहे हैं...`;
 
-                let userData = { name, phone, lastLogin: new Date().toISOString() };
+                    const usersRef = collection(db, "users");
+                    const q = query(usersRef, where("phone", "==", phone));
+                    const querySnapshot = await getDocs(q);
 
-                if (!querySnapshot.empty) {
-                    const existingDoc = querySnapshot.docs[0];
-                    userData.name = existingDoc.data().name || name;
-                    await setDoc(doc(db, "users", existingDoc.id), { lastLogin: serverTimestamp() }, { merge: true });
+                    if (!querySnapshot.empty) {
+                        // EXISTING USER: Direct Login
+                        const existingDoc = querySnapshot.docs[0];
+                        const userData = {
+                            name: existingDoc.data().name || "यूज़र",
+                            phone: phone,
+                            gender: existingDoc.data().gender || "Unspecified",
+                            lastLogin: new Date().toISOString()
+                        };
+
+                        await setDoc(doc(db, "users", existingDoc.id), { lastLogin: serverTimestamp() }, { merge: true });
+                        localStorage.setItem('notification_user', JSON.stringify(userData));
+                        showChatScreen(userData);
+                    } else {
+                        // NEW USER: Show Name & Gender Input Fields
+                        pendingNewUserCheck = true;
+                        newUserFields.classList.remove('hidden');
+                        userNameInput.required = true;
+                        submitBtnText.innerText = "अकाउंट बनाएँ और साइन इन करें";
+                    }
                 } else {
-                    await addDoc(collection(db, "users"), { name, phone, createdAt: serverTimestamp() });
-                }
+                    // CREATE NEW USER ACCOUNT
+                    const name = userNameInput.value.trim();
+                    const gender = userGenderInput.value;
 
-                localStorage.setItem('notification_user', JSON.stringify(userData));
-                showChatScreen(userData);
+                    if (!name) { alert('कृपया अपना पूरा नाम लिखें!'); submitBtn.disabled = false; return; }
+
+                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
+
+                    // Double check to strictly prevent duplicate account creation
+                    const usersRef = collection(db, "users");
+                    const q = query(usersRef, where("phone", "==", phone));
+                    const checkSnap = await getDocs(q);
+
+                    let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
+
+                    if (checkSnap.empty) {
+                        await addDoc(collection(db, "users"), {
+                            name,
+                            phone,
+                            gender,
+                            createdAt: serverTimestamp(),
+                            lastLogin: serverTimestamp()
+                        });
+                    } else {
+                        const existingDoc = checkSnap.docs[0];
+                        userData.name = existingDoc.data().name || name;
+                    }
+
+                    localStorage.setItem('notification_user', JSON.stringify(userData));
+                    showChatScreen(userData);
+                }
             } catch (error) {
-                alert("साइन इन एरर: " + error.message);
+                alert("लॉगिन/रजिस्ट्रेशन में त्रुटि: " + error.message);
             } finally {
                 submitBtn.disabled = false;
             }
         });
+
+        // Auto Login from Local Storage
+        const savedUser = JSON.parse(localStorage.getItem('notification_user'));
+        if (savedUser) { showChatScreen(savedUser); }
 
         function showChatScreen(user) {
             currentUser = user;
@@ -385,25 +456,49 @@
             });
         }
 
-        // OPTIMIZED FIRESTORE READS (केवल अंतिम 15 आइटम ही मंगवाएगा)
+        // READ-OPTIMIZED CACHED CHAT STREAM (Local Storage Integration)
         function loadNotifications() {
+            // 1. First Load Cached Messages from LocalStorage immediately (0 Read Cost)
+            const localCachedData = localStorage.getItem('cached_notifications');
+            if (localCachedData) {
+                try {
+                    allNotificationsData = JSON.parse(localCachedData);
+                    const spinner = document.getElementById('loading-spinner');
+                    if (spinner) spinner.remove();
+                    renderFilteredNotifications();
+                } catch(e) { console.error("Cache Read Error", e); }
+            }
+
+            // 2. Query Firestore only for the last 15 items to update cache & sync new posts
             const q = query(
                 collection(db, "notifications"), 
                 orderBy("timestamp", "desc"), 
-                limit(15) // Reads को नियंत्रित करने के लिए
+                limit(15)
             );
 
             onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
                 if (spinner) spinner.remove();
 
-                allNotificationsData = [];
+                const fetchedData = [];
                 snapshot.forEach((docSnap) => {
-                    allNotificationsData.push({ id: docSnap.id, ...docSnap.data() });
+                    const data = docSnap.data();
+                    fetchedData.push({
+                        id: docSnap.id,
+                        title: data.title || '',
+                        message: data.message || '',
+                        mediaUrl: data.mediaUrl || null,
+                        mediaType: data.mediaType || 'none',
+                        fileName: data.fileName || '',
+                        timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
+                    });
                 });
 
-                // क्रमानुसार सही ऑर्डर के लिए रिवर्स करें
-                allNotificationsData.reverse();
+                fetchedData.reverse();
+                allNotificationsData = fetchedData;
+
+                // Save to LocalStorage to minimize future DB Reads
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
         }
@@ -426,7 +521,7 @@
 
             dataToDisplay.forEach((data) => {
                 const docId = data.id;
-                const msgTime = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
+                const msgTime = data.timestampMs ? new Date(data.timestampMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
                 const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
 
                 let mediaHTML = '';
