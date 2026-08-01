@@ -123,7 +123,7 @@
                 </div>
             </div>
 
-            <!-- Admin Input Box with Gemini Style Attachment Upload -->
+            <!-- Admin Input Box -->
             <div id="admin-input-box" class="hidden bg-white p-3 border-t border-slate-300 flex-col space-y-2 shadow-2xl z-20">
                 <input type="text" id="admin-msg-title" placeholder="📌 शीर्षक (Title)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 font-bold">
                 
@@ -347,11 +347,17 @@
             }
         });
 
-        // 🟢 Helper Function: Analytics collection में totalUsers बढ़ाएगा
+        // 🟢 नया यूज़र जुड़ने पर analytics कलेक्शन का डॉक्युमेंट ऑटो-क्रिएट होगा
         async function incrementUserAnalyticsCount() {
             try {
                 const statsRef = doc(db, "analytics", "stats");
-                await setDoc(statsRef, { totalUsers: increment(1) }, { merge: true });
+                const statsDoc = await getDoc(statsRef);
+
+                if (statsDoc.exists()) {
+                    await setDoc(statsRef, { totalUsers: increment(1) }, { merge: true });
+                } else {
+                    await setDoc(statsRef, { totalUsers: 1 });
+                }
             } catch (e) {
                 console.error("Analytics Count Update Error", e);
             }
@@ -413,7 +419,7 @@
                             createdAt: serverTimestamp(),
                             lastLogin: serverTimestamp()
                         });
-                        // 🟢 केवल नया अकाउंट बनने पर ही काउंट +1 होगा
+                        // 🟢 नया अकाउंट बनने पर ही काउंट +1 बढ़ेगा
                         await incrementUserAnalyticsCount();
                     } else {
                         const existingDoc = checkSnap.docs[0];
@@ -451,12 +457,12 @@
             loadNotifications();
         }
 
-        // 🟢 ULTRA-OPTIMIZED READS: Analytics डॉक्यूमेंट से 24 घंटे में केवल 1 Single Read करेगा
+        // 🟢 24 घंटे में केवल 1 Read लेगा (Analytics collection से)
         async function loadTotalUsersCountOnceDaily() {
             const cachedCount = localStorage.getItem('user_count_cache');
             const lastFetchedTime = localStorage.getItem('user_count_last_fetched');
             const now = Date.now();
-            const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 घण्टे
+            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
             if (cachedCount && lastFetchedTime && (now - parseInt(lastFetchedTime)) < ONE_DAY_MS) {
                 userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
@@ -464,17 +470,17 @@
             }
 
             try {
-                // 'users' कलेक्शन की जगह सिर्फ 1 छोटे 'analytics/stats' डॉक्यूमेंट को Read करेगा
-                const statsDoc = await getDoc(doc(db, "analytics", "stats"));
+                const statsRef = doc(db, "analytics", "stats");
+                const statsDoc = await getDoc(statsRef);
                 let count = 0;
                 
                 if (statsDoc.exists()) {
                     count = statsDoc.data().totalUsers || 0;
                 } else {
-                    // Backfall fallback अगर पहला डॉक ना हो
+                    // अगर 'analytics' न मिले तो खुद ऑटो-जनरेट करेगा
                     const snapshot = await getDocs(collection(db, "users"));
                     count = snapshot.size;
-                    await setDoc(doc(db, "analytics", "stats"), { totalUsers: count });
+                    await setDoc(statsRef, { totalUsers: count });
                 }
 
                 localStorage.setItem('user_count_cache', count);
