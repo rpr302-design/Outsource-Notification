@@ -97,15 +97,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <!-- Manual Sync / Refresh Button -->
-                    <button id="refresh-btn" onclick="syncMessagesWhatsAppStyle(true)" title="नए संदेश चेक करें" class="text-teal-200 hover:text-white text-sm p-2 transition">
-                        <i id="refresh-icon" class="fas fa-sync-alt"></i>
-                    </button>
-                    <button id="logout-btn" title="लॉगआउट" class="text-teal-200 hover:text-white text-sm p-2">
-                        <i class="fas fa-sign-out-alt text-base"></i>
-                    </button>
-                </div>
+                <button id="logout-btn" title="लॉगआउट" class="text-teal-200 hover:text-white text-sm p-2">
+                    <i class="fas fa-sign-out-alt text-base"></i>
+                </button>
             </div>
 
             <!-- TAB NAVIGATION SYSTEM -->
@@ -147,7 +141,7 @@
                     <input type="file" id="admin-file-input" class="hidden" accept="image/*,video/*,.pdf,.xlsx,.doc,.docx">
                 </div>
 
-                <!-- Attachment Menu Popup -->
+                <!-- Gemini Attachment Menu Popup -->
                 <div id="attachment-menu" class="hidden absolute bottom-16 left-3 bg-white p-3 rounded-2xl shadow-2xl border border-slate-200 flex space-x-4 z-30">
                     <button type="button" onclick="triggerFileSelect('image/*')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
                         <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-image"></i></div>
@@ -199,8 +193,8 @@
     <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
@@ -401,7 +395,6 @@
 
                     let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
 
-                    // Auto-Creates 'users' collection on first entry
                     if (checkSnap.empty) {
                         await addDoc(collection(db, "users"), {
                             name,
@@ -471,12 +464,9 @@
             }
         }
 
-        // 🟢 100% READS SAVER: ZERO REALTIME LISTENERS (Only One-Time Delta Fetch via getDocs)
-        window.syncMessagesWhatsAppStyle = async function(isManualRefresh = false) {
-            const refreshIcon = document.getElementById('refresh-icon');
-            if (refreshIcon) refreshIcon.classList.add('fa-spin');
-
-            // Step 1: सबसे पहले LocalStorage से ही पूरा डेटा तुरंत स्क्रीन पर लोड कर दो (0 Read Cost)
+        // 🟢 WHATSAPP POSTMAN ARCHITECTURE (Delta Fetching - 0 Waste Reads)
+        function syncMessagesWhatsAppStyle() {
+            // Step 1: सबसे पहले LocalStorage से ही पुराना डेटा तुरंत स्क्रीन पर लोड कर दो (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -487,14 +477,14 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: पता लगाओ कि आखिरी मैसेज किस टाइमस्टैम्प पर आया था
+            // Step 2: पता लगाओ कि आख़िरी मैसेज किस टाइमस्टैम्प पर आया था
             let lastTimestampMs = 0;
             if (allNotificationsData.length > 0) {
                 const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
                 if (maxTime > 0) lastTimestampMs = maxTime;
             }
 
-            // Step 3: केवल वही मैसेज मंगाएंगे जो लोकल टाइमस्टैम्प के बाद आए हैं
+            // Step 3: व्हाट्सएप कॉन्सेप्ट - केवल वही मैसेज माँगेंगे जो लोकल टाइमस्टैम्प से 'नये' हैं
             let q;
             if (lastTimestampMs > 0) {
                 const lastDate = new Date(lastTimestampMs);
@@ -505,7 +495,7 @@
                     orderBy("timestamp", "desc")
                 );
             } else {
-                // बिल्कुल पहली बार ऐप इंस्टॉल होने पर ही अंतिम 15 रिकॉर्ड्स लाएगा
+                // पहली बार ऐप शुरू होने पर ही केवल अंतिम 15 रिकॉर्ड्स लाएगा
                 q = query(
                     collection(db, "notifications"), 
                     orderBy("timestamp", "desc"), 
@@ -513,52 +503,43 @@
                 );
             }
 
-            try {
-                // Step 4: One-Time Read (getDocs) - 0 Background Listening Reads
-                const querySnapshot = await getDocs(q);
-                
+            // Step 4: व्हाट्सएप सिंक लिसनर
+            onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
                 if (spinner) spinner.remove();
 
-                if (!querySnapshot.empty) {
-                    const newFetchedData = [];
-                    querySnapshot.forEach((docSnap) => {
-                        const data = docSnap.data();
-                        newFetchedData.push({
-                            id: docSnap.id,
-                            adminName: data.adminName || 'Admin Notification',
-                            title: data.title || '',
-                            message: data.message || '',
-                            mediaUrl: data.mediaUrl || null,
-                            mediaType: data.mediaType || 'none',
-                            fileName: data.fileName || '',
-                            storagePath: data.storagePath || null, // Storage file cleanup ID
-                            timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
-                        });
+                if (snapshot.empty) return;
+
+                const newFetchedData = [];
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    newFetchedData.push({
+                        id: docSnap.id,
+                        adminName: data.adminName || 'Admin Notification',
+                        title: data.title || '',
+                        message: data.message || '',
+                        mediaUrl: data.mediaUrl || null,
+                        mediaType: data.mediaType || 'none',
+                        fileName: data.fileName || '',
+                        timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
                     });
+                });
 
-                    newFetchedData.reverse();
+                newFetchedData.reverse();
 
-                    // नये संदेशों को लोकल ऐरे (Array) में जोड़ें
-                    const existingMap = new Map();
-                    allNotificationsData.forEach(item => existingMap.set(item.id, item));
-                    newFetchedData.forEach(item => existingMap.set(item.id, item));
+                // नये संदेशों को पुराने डेटाबेस में मर्ज करें और डुप्लिकेट्स को हटाएँ
+                const existingMap = new Map();
+                allNotificationsData.forEach(item => existingMap.set(item.id, item));
+                newFetchedData.forEach(item => existingMap.set(item.id, item));
 
-                    allNotificationsData = Array.from(existingMap.values());
-                    allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
+                allNotificationsData = Array.from(existingMap.values());
+                allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
 
-                    // लोकल स्टोरेज को परमानेंटली अपडेट करें
-                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
-                    renderFilteredNotifications();
-                }
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                const spinner = document.getElementById('loading-spinner');
-                if (spinner) spinner.remove();
-            } finally {
-                if (refreshIcon) refreshIcon.classList.remove('fa-spin');
-            }
-        };
+                // लोकल स्टोरेज (फ़ोन की परमानेंट स्टोरेज) को अपडेट करें
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                renderFilteredNotifications();
+            });
+        }
 
         function renderFilteredNotifications() {
             messagesContainer.innerHTML = '';
@@ -649,29 +630,12 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // 🟢 AUTO CLEANUP: Firestore Database + Firebase Storage File Eraser
         window.deleteNotification = async function(docId) {
-            if (confirm("नोटिफिकेशन और फाइल (यदि कोई है) हमेशा के लिए डिलीट करना चाहते हैं?")) {
-                try {
-                    const targetItem = allNotificationsData.find(item => item.id === docId);
-
-                    // 1. अगर मीडिया फ़ाइल मौजूद है, तो Firebase Storage से भी डिलीट करें
-                    if (targetItem && targetItem.storagePath) {
-                        const fileRef = ref(storage, targetItem.storagePath);
-                        await deleteObject(fileRef).catch(err => console.log("Storage file already removed or error:", err));
-                    }
-
-                    // 2. Firestore Document डिलीट करें
-                    await deleteDoc(doc(db, "notifications", docId));
-
-                    // 3. लोकल एरे व LocalStorage अपडेट करें
-                    allNotificationsData = allNotificationsData.filter(item => item.id !== docId);
-                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
-                    renderFilteredNotifications();
-
-                } catch(error) {
-                    alert("डिलीट करने में एरर आया: " + error.message);
-                }
+            if (confirm("नोटिफिकेशन डिलीट करना चाहते हैं?")) {
+                await deleteDoc(doc(db, "notifications", docId));
+                allNotificationsData = allNotificationsData.filter(item => item.id !== docId);
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                renderFilteredNotifications();
             }
         };
 
@@ -688,14 +652,11 @@
                 let mediaUrl = null;
                 let mediaType = 'none';
                 let fileName = '';
-                let storagePath = null;
 
                 try {
                     if (selectedFile) {
                         fileName = selectedFile.name;
-                        storagePath = `uploads/${Date.now()}_${selectedFile.name}`;
-                        const storageRef = ref(storage, storagePath);
-                        
+                        const storageRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
                         const uploadResult = await uploadBytes(storageRef, selectedFile);
                         mediaUrl = await getDownloadURL(uploadResult.ref);
 
@@ -705,7 +666,6 @@
                         else mediaType = 'file';
                     }
 
-                    // Auto-Creates 'notifications' collection if not present
                     await addDoc(collection(db, "notifications"), {
                         adminName: currentUser ? currentUser.name : "Admin",
                         title: title || "महत्वपूर्ण सूचना",
@@ -713,16 +673,12 @@
                         mediaUrl: mediaUrl,
                         mediaType: mediaType,
                         fileName: fileName,
-                        storagePath: storagePath,
                         timestamp: serverTimestamp()
                     });
 
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
                     clearFileBtn.click();
-
-                    // अपने द्वारा भेजा गया मैसेज तुरंत सिंक करें
-                    syncMessagesWhatsAppStyle();
 
                 } catch (err) {
                     alert("अपलोड एरर: " + err.message);
@@ -743,3 +699,4 @@
     </script>
 </body>
 </html>
+इस कोड को सुधारना है
