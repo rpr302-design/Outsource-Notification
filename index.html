@@ -66,7 +66,7 @@
             </form>
 
             <div class="text-center text-[11px] text-slate-500 pb-2">
-                🔒 Firebase Storage JSON Engine (0 Database Cost)
+                🔒 Firebase Direct Storage Engine (0 Database Cost)
             </div>
         </div>
 
@@ -155,7 +155,7 @@
                 </div>
 
                 <div id="upload-progress" class="hidden text-[11px] font-bold text-teal-700 text-center py-1 bg-teal-50 rounded">
-                    <i class="fas fa-spinner fa-spin mr-1"></i> स्टोरेज में लाइव अपडेट हो रहा है...
+                    <i class="fas fa-spinner fa-spin mr-1"></i> स्टोरेज में डायरेक्ट अपडेट हो रहा है...
                 </div>
             </div>
 
@@ -200,6 +200,7 @@
 
         const ADMIN_PHONE_NUMBER = "9993332211";
         const MAX_MESSAGES_LIMIT = 20;
+        const DIRECT_DATA_JSON_URL = "https://firebasestorage.googleapis.com/v0/b/push-notifaction-c3460.firebasestorage.app/o/data.json?alt=media&token=9c62bc3b-edc9-40a1-9cc3-6613c40b9640";
 
         let currentUser = null;
         let selectedFile = null;
@@ -363,7 +364,7 @@
             loadDataFromFirebaseStorage();
         }
 
-        // 🟢 Direct Fetch Engine from Firebase Storage URL (0 Firestore Reads)
+        // 🟢 Direct Public Token Fetch Engine (0 Firestore Cost)
         async function loadDataFromFirebaseStorage() {
             // Step 1: Render Local Storage Cache Instantly
             const localCachedData = localStorage.getItem('cached_notifications');
@@ -376,12 +377,14 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: Fetch Live data.json directly from Firebase Storage
+            // Step 2: Fetch Live data.json via Direct Token URL with Cache Buster
             try {
-                const jsonStorageRef = ref(storage, 'data.json');
-                const liveUrl = await getDownloadURL(jsonStorageRef);
+                const response = await fetch(DIRECT_DATA_JSON_URL + "&t=" + Date.now());
 
-                const response = await fetch(liveUrl + '&t=' + Date.now());
+                if (!response.ok) {
+                    throw new Error(`HTTP Error! Status: ${response.status}`);
+                }
+
                 const freshData = await response.json();
 
                 if (freshData.app_settings && freshData.app_settings.total_users_count) {
@@ -391,7 +394,7 @@
                 if (freshData.notifications && Array.isArray(freshData.notifications)) {
                     let fetchedList = freshData.notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     
-                    // Purge Layer: केवल टॉप 20 मैसेज रखेगा
+                    // Purge Layer: केवल टॉप 20 हालिया मैसेज रखेगा
                     fetchedList = fetchedList.slice(0, MAX_MESSAGES_LIMIT);
 
                     allNotificationsData = fetchedList;
@@ -403,9 +406,11 @@
                     renderFilteredNotifications();
                 }
             } catch (error) {
-                console.warn("Storage data.json फ़ाइल फ़ेच करने में सूचना:", error.message);
+                console.error("data.json फ़ेच करने में एरर:", error);
                 const spinner = document.getElementById('loading-spinner');
-                if (spinner) spinner.remove();
+                if (spinner && allNotificationsData.length === 0) {
+                    spinner.innerHTML = `<p class="text-xs text-rose-500">डेटा लोड करने में समस्या आई। कृपया रिफ़्रेश करें।</p>`;
+                }
             }
         }
 
@@ -480,7 +485,7 @@
             });
         }
 
-        // 🚀 Admin Action: Posts message & DIRECTLY OVERWRITES data.json inside Firebase Storage
+        // 🚀 Admin Action: Overwrites data.json inside Firebase Storage directly
         if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
@@ -496,7 +501,6 @@
                 let fileName = '';
 
                 try {
-                    // Step 1: फ़ाइल हो तो उसे Storage में अपलोड करें
                     if (selectedFile) {
                         fileName = selectedFile.name;
                         const mediaStorageRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
@@ -509,7 +513,6 @@
                         else mediaType = 'file';
                     }
 
-                    // Step 2: नया ऑब्जेक्ट बनाएँ
                     const newMsg = {
                         id: 'msg_' + Date.now(),
                         adminName: currentUser ? currentUser.name : "MP Outsource Admin",
@@ -524,7 +527,6 @@
                     allNotificationsData.unshift(newMsg);
                     allNotificationsData = allNotificationsData.slice(0, MAX_MESSAGES_LIMIT);
 
-                    // Step 3: नए डाटा को JSON स्ट्रिंग बनाएँ
                     const updatedJsonString = JSON.stringify({
                         app_settings: {
                             total_users_count: 12500,
@@ -533,17 +535,16 @@
                         notifications: allNotificationsData
                     }, null, 2);
 
-                    // Step 4: Firebase Storage की data.json फ़ाइल को डायरेक्ट ओवरराइट (Save) करें
+                    // Overwrite data.json in Storage directly
                     const jsonStorageRef = ref(storage, 'data.json');
                     await uploadString(jsonStorageRef, updatedJsonString, 'raw', {
                         contentType: 'application/json'
                     });
 
-                    // Step 5: लोकल स्टोरेज और UI अपडेट करें
                     localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                     renderFilteredNotifications();
 
-                    alert("🎉 सन्देश लाइव हो गया! (data.json फ़ायरबेस स्टोरेज में ऑटोमैटिक अपडेट हो गई है)");
+                    alert("🎉 सन्देश लाइव हो गया! (Firebase Storage में data.json ऑटो-अपडेट हो गई है)");
 
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
