@@ -141,7 +141,7 @@
                     <input type="file" id="admin-file-input" class="hidden" accept="image/*,video/*,.pdf,.xlsx,.doc,.docx">
                 </div>
 
-                <!-- Gemini Attachment Menu Popup -->
+                <!-- Attachment Menu Popup -->
                 <div id="attachment-menu" class="hidden absolute bottom-16 left-3 bg-white p-3 rounded-2xl shadow-2xl border border-slate-200 flex space-x-4 z-30">
                     <button type="button" onclick="triggerFileSelect('image/*')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
                         <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-image"></i></div>
@@ -193,7 +193,7 @@
     <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
@@ -464,9 +464,9 @@
             }
         }
 
-        // 🟢 WHATSAPP POSTMAN ARCHITECTURE (Delta Fetching - 0 Waste Reads)
+        // 🟢 WHATSAPP POSTMAN ARCHITECTURE (Delta Fetching - Zero Waste Reads)
         function syncMessagesWhatsAppStyle() {
-            // Step 1: सबसे पहले LocalStorage से ही पुराना डेटा तुरंत स्क्रीन पर लोड कर दो (0 Read Cost)
+            // Step 1: सबसे पहले LocalStorage से पुराना डेटा तुरंत स्क्रीन पर लोड करें (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -477,14 +477,14 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: पता लगाओ कि आख़िरी मैसेज किस टाइमस्टैम्प पर आया था
+            // Step 2: आख़िरी मैसेज का टाइमस्टैम्प निकालें
             let lastTimestampMs = 0;
             if (allNotificationsData.length > 0) {
                 const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
                 if (maxTime > 0) lastTimestampMs = maxTime;
             }
 
-            // Step 3: व्हाट्सएप कॉन्सेप्ट - केवल वही मैसेज माँगेंगे जो लोकल टाइमस्टैम्प से 'नये' हैं
+            // Step 3: केवल वही मैसेज मंगाए जाएंगे जो 'लास्ट टाइमस्टैम्प' के बाद के हैं
             let q;
             if (lastTimestampMs > 0) {
                 const lastDate = new Date(lastTimestampMs);
@@ -527,7 +527,7 @@
 
                 newFetchedData.reverse();
 
-                // नये संदेशों को पुराने डेटाबेस में मर्ज करें और डुप्लिकेट्स को हटाएँ
+                // नये संदेशों को पुराने डेटाबेस में मर्ज करें और डुप्लिकेट्स हटाएं
                 const existingMap = new Map();
                 allNotificationsData.forEach(item => existingMap.set(item.id, item));
                 newFetchedData.forEach(item => existingMap.set(item.id, item));
@@ -535,7 +535,7 @@
                 allNotificationsData = Array.from(existingMap.values());
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
 
-                // लोकल स्टोरेज (फ़ोन की परमानेंट स्टोरेज) को अपडेट करें
+                // लोकल स्टोरेज (फ़ोन की स्टोरेज) को अपडेट करें
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
