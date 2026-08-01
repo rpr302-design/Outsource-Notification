@@ -200,9 +200,6 @@
 
         const ADMIN_PHONE_NUMBER = "9993332211";
         const MAX_MESSAGES_LIMIT = 20;
-        
-        // 🚀 Relative Rewrite Path (CORS Block Bypass)
-        const DIRECT_DATA_JSON_URL = "/api/data.json";
 
         let currentUser = null;
         let selectedFile = null;
@@ -366,7 +363,7 @@
             loadDataFromFirebaseStorage();
         }
 
-        // 🟢 Fetch Data Engine (Hosting Rewrite)
+        // 🟢 Direct Firebase Storage SDK Fetch Engine (Bypasses Hosting Rewrites)
         async function loadDataFromFirebaseStorage() {
             // Step 1: Render Local Storage Cache Instantly
             const localCachedData = localStorage.getItem('cached_notifications');
@@ -379,9 +376,12 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: Fetch Live data.json via Rewrite Endpoint with Cache Buster
+            // Step 2: Fetch Live data.json using Direct Storage SDK Download URL
             try {
-                const response = await fetch(DIRECT_DATA_JSON_URL + "?t=" + Date.now());
+                const jsonStorageRef = ref(storage, 'data.json');
+                const directUrl = await getDownloadURL(jsonStorageRef);
+
+                const response = await fetch(directUrl + "&t=" + Date.now());
 
                 if (!response.ok) {
                     throw new Error(`HTTP Error! Status: ${response.status}`);
@@ -523,7 +523,7 @@
                     try {
                         const jsonRef = ref(storage, 'data.json');
                         const liveUrl = await getDownloadURL(jsonRef);
-                        const res = await fetch(liveUrl + "?t=" + Date.now());
+                        const res = await fetch(liveUrl + "&t=" + Date.now());
                         if (res.ok) {
                             const parsed = await res.json();
                             if (parsed && Array.isArray(parsed.notifications)) {
