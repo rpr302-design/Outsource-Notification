@@ -193,7 +193,7 @@
     <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
@@ -466,7 +466,7 @@
 
         // 🟢 WHATSAPP POSTMAN ARCHITECTURE (Delta Fetching - 0 Waste Reads)
         function syncMessagesWhatsAppStyle() {
-            // Step 1: सबसे पहले LocalStorage से ही पुराना डेटा तुरंत स्क्रीन पर लोड कर दो (0 Read Cost)
+            // Step 1: लोकल स्टोरेज से पुराना डेटा रेंडर करें (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -477,14 +477,14 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: पता लगाओ कि आख़िरी मैसेज किस टाइमस्टैम्प पर आया था
+            // Step 2: आख़िरी मैसेज का टाइमस्टैम्प (Timestamp) निकालें
             let lastTimestampMs = 0;
             if (allNotificationsData.length > 0) {
                 const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
                 if (maxTime > 0) lastTimestampMs = maxTime;
             }
 
-            // Step 3: व्हाट्सएप कॉन्सेप्ट - केवल वही मैसेज माँगेंगे जो लोकल टाइमस्टैम्प से 'नये' हैं
+            // Step 3: केवल नए संदेशों के लिए क्वैरी बनाएँ
             let q;
             if (lastTimestampMs > 0) {
                 const lastDate = new Date(lastTimestampMs);
@@ -495,7 +495,7 @@
                     orderBy("timestamp", "desc")
                 );
             } else {
-                // पहली बार ऐप शुरू होने पर ही केवल अंतिम 15 रिकॉर्ड्स लाएगा
+                // पहली बार में केवल 15 रिकॉर्ड्स लाएगा
                 q = query(
                     collection(db, "notifications"), 
                     orderBy("timestamp", "desc"), 
@@ -503,7 +503,7 @@
                 );
             }
 
-            // Step 4: व्हाट्सएप सिंक लिसनर
+            // Step 4: रियल-टाइम सिंक लिसनर
             onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
                 if (spinner) spinner.remove();
@@ -527,7 +527,7 @@
 
                 newFetchedData.reverse();
 
-                // नये संदेशों को पुराने डेटाबेस में मर्ज करें और डुप्लिकेट्स को हटाएँ
+                // नए मैसेज को लोकल डेटाबेस के साथ मर्ज करें
                 const existingMap = new Map();
                 allNotificationsData.forEach(item => existingMap.set(item.id, item));
                 newFetchedData.forEach(item => existingMap.set(item.id, item));
@@ -535,7 +535,7 @@
                 allNotificationsData = Array.from(existingMap.values());
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
 
-                // लोकल स्टोरेज (फ़ोन की परमानेंट स्टोरेज) को अपडेट करें
+                // लोकल स्टोरेज अपडेट करें
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
