@@ -51,7 +51,7 @@
 
                 <div id="new-user-fields" class="hidden space-y-4 border-t border-slate-800 pt-3">
                     <div class="bg-teal-900/40 p-2.5 rounded-lg border border-teal-500/30 text-[11px] text-teal-300 flex items-center">
-                        <i class="fas fa-user-plus mr-2 text-sm"></i> नया नंबर मिला! कृपया अपना खाता बनाने के लिए नाम व जेंडर चुनें:
+                        <i class="fas fa-user-plus mr-2 text-sm"></i> साइन इन करने के लिए नाम व जेंडर दर्ज करें:
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-1">आपका पूरा नाम</label>
@@ -75,7 +75,7 @@
             </form>
 
             <div class="text-center text-[11px] text-slate-500 pb-2">
-                🔒 एनक्रिप्टेड व सुरक्षित नेटवर्क
+                🔒 Static JSON Model (0 Reads / Writes)
             </div>
         </div>
 
@@ -105,10 +105,10 @@
             <!-- TAB NAVIGATION SYSTEM -->
             <div class="bg-teal-900 text-teal-100 flex justify-around text-xs font-bold border-t border-teal-700/50 shadow-inner z-10">
                 <button onclick="switchTab('recent')" id="tab-recent" class="py-2.5 px-3 flex-1 text-center border-b-2 border-teal-300 text-white transition">
-                    💬 हालिया (2)
+                    💬 हालिया
                 </button>
                 <button onclick="switchTab('all')" id="tab-all" class="py-2.5 px-3 flex-1 text-center border-b-2 border-transparent text-teal-300 hover:text-white transition">
-                    📜 सभी मैसेज
+                    📜 सभी मैसेज (Top 20)
                 </button>
                 <button onclick="switchTab('media')" id="tab-media" class="py-2.5 px-3 flex-1 text-center border-b-2 border-transparent text-teal-300 hover:text-white transition">
                     🖼️ मीडिया फ़ाइलें
@@ -141,7 +141,7 @@
                     <input type="file" id="admin-file-input" class="hidden" accept="image/*,video/*,.pdf,.xlsx,.doc,.docx">
                 </div>
 
-                <!-- Gemini Attachment Menu Popup -->
+                <!-- Attachment Menu Popup -->
                 <div id="attachment-menu" class="hidden absolute bottom-16 left-3 bg-white p-3 rounded-2xl shadow-2xl border border-slate-200 flex space-x-4 z-30">
                     <button type="button" onclick="triggerFileSelect('image/*')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
                         <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-image"></i></div>
@@ -164,13 +164,13 @@
                 </div>
 
                 <div id="upload-progress" class="hidden text-[11px] font-bold text-teal-700 text-center py-1 bg-teal-50 rounded">
-                    <i class="fas fa-spinner fa-spin mr-1"></i> अपलोड हो रहा है...
+                    <i class="fas fa-spinner fa-spin mr-1"></i> अपडेट प्रक्रिया में है...
                 </div>
             </div>
 
             <!-- User Footer -->
             <div id="user-footer" class="bg-slate-200 px-4 py-2.5 text-center text-[11px] text-slate-600 border-t z-10">
-                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन मीडिया फ़ाइलें शेयर कर सकते हैं।
+                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन पोस्ट जारी कर सकते हैं।
             </div>
         </div>
 
@@ -190,10 +190,9 @@
         <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4"></div>
     </div>
 
-    <!-- Firebase v10 SDK -->
+    <!-- Firebase Storage Modular SDK (केवल फाइल्स अपलोड के लिए) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
@@ -206,26 +205,23 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
         const storage = getStorage(app);
 
-        const ADMIN_PHONE_NUMBER = "9993332211"; 
-        
+        const ADMIN_PHONE_NUMBER = "9993332211";
+        const MAX_MESSAGES_LIMIT = 20;
+
         let currentUser = null;
         let selectedFile = null;
         let allNotificationsData = [];
         let activeTab = 'recent';
-        let pendingNewUserCheck = false;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
         const loginForm = document.getElementById('login-form');
         const userNameInput = document.getElementById('user-name');
         const userPhoneInput = document.getElementById('user-phone');
-        const userGenderInput = document.getElementById('user-gender');
         const newUserFields = document.getElementById('new-user-fields');
         const submitBtn = document.getElementById('submit-btn');
-        const submitBtnText = document.getElementById('submit-btn-text');
         const messagesContainer = document.getElementById('messages-container');
         const welcomeUserText = document.getElementById('welcome-user');
         const userCountBadge = document.getElementById('user-count-badge');
@@ -338,83 +334,21 @@
             }
         };
 
-        userPhoneInput.addEventListener('input', () => {
-            if (pendingNewUserCheck) {
-                pendingNewUserCheck = false;
-                newUserFields.classList.add('hidden');
-                userNameInput.required = false;
-                submitBtnText.innerText = "आगे बढ़ें / लॉगिन करें";
-            }
-        });
-
-        loginForm.addEventListener('submit', async (e) => {
+        loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
+            const name = userNameInput.value.trim() || "यूज़र";
 
             if (phone.length !== 10) { alert('कृपया सही 10 अंकों का नंबर लिखें!'); return; }
 
-            submitBtn.disabled = true;
+            const userData = { name, phone };
+            localStorage.setItem('notification_user', JSON.stringify(userData));
+            showChatScreen(userData);
+        });
 
-            try {
-                if (!pendingNewUserCheck) {
-                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> नंबर जांच रहे हैं...`;
-
-                    const usersRef = collection(db, "users");
-                    const q = query(usersRef, where("phone", "==", phone));
-                    const querySnapshot = await getDocs(q);
-
-                    if (!querySnapshot.empty) {
-                        const existingDoc = querySnapshot.docs[0];
-                        const userData = {
-                            name: existingDoc.data().name || "यूज़र",
-                            phone: phone,
-                            gender: existingDoc.data().gender || "Unspecified",
-                            lastLogin: new Date().toISOString()
-                        };
-
-                        await setDoc(doc(db, "users", existingDoc.id), { lastLogin: serverTimestamp() }, { merge: true });
-                        localStorage.setItem('notification_user', JSON.stringify(userData));
-                        showChatScreen(userData);
-                    } else {
-                        pendingNewUserCheck = true;
-                        newUserFields.classList.remove('hidden');
-                        userNameInput.required = true;
-                        submitBtnText.innerText = "अकाउंट बनाएँ और साइन इन करें";
-                    }
-                } else {
-                    const name = userNameInput.value.trim();
-                    const gender = userGenderInput.value;
-
-                    if (!name) { alert('कृपया अपना पूरा नाम लिखें!'); submitBtn.disabled = false; return; }
-
-                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
-
-                    const usersRef = collection(db, "users");
-                    const q = query(usersRef, where("phone", "==", phone));
-                    const checkSnap = await getDocs(q);
-
-                    let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
-
-                    if (checkSnap.empty) {
-                        await addDoc(collection(db, "users"), {
-                            name,
-                            phone,
-                            gender,
-                            createdAt: serverTimestamp(),
-                            lastLogin: serverTimestamp()
-                        });
-                    } else {
-                        const existingDoc = checkSnap.docs[0];
-                        userData.name = existingDoc.data().name || name;
-                    }
-
-                    localStorage.setItem('notification_user', JSON.stringify(userData));
-                    showChatScreen(userData);
-                }
-            } catch (error) {
-                alert("लॉगिन/रजिस्ट्रेशन में त्रुटि: " + error.message);
-            } finally {
-                submitBtn.disabled = false;
+        userPhoneInput.addEventListener('input', () => {
+            if (userPhoneInput.value.length === 10) {
+                newUserFields.classList.remove('hidden');
             }
         });
 
@@ -435,38 +369,11 @@
             }
 
             requestNotificationPermission();
-            loadTotalUsersCountOnceDaily();
-            syncMessagesWhatsAppStyle();
+            loadDataFromJSON();
         }
 
-        // 🟢 24 घंटे में केवल 1 Read लेकर लोकल मेमोरी (LocalStorage) में सेव रखेगा
-        async function loadTotalUsersCountOnceDaily() {
-            const cachedCount = localStorage.getItem('user_count_cache');
-            const lastFetchedTime = localStorage.getItem('user_count_last_fetched');
-            const now = Date.now();
-            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-            if (cachedCount && lastFetchedTime && (now - parseInt(lastFetchedTime)) < ONE_DAY_MS) {
-                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
-                return;
-            }
-
-            try {
-                const snapshot = await getDocs(collection(db, "users"));
-                const count = snapshot.size;
-                localStorage.setItem('user_count_cache', count);
-                localStorage.setItem('user_count_last_fetched', now.toString());
-                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${count} Users`;
-            } catch (e) {
-                if (cachedCount) {
-                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
-                }
-            }
-        }
-
-        // 🟢 WHATSAPP POSTMAN ARCHITECTURE (Delta Fetching - 0 Waste Reads)
-        function syncMessagesWhatsAppStyle() {
-            // Step 1: लोकल स्टोरेज से पुराना डेटा रेंडर करें (0 Read Cost)
+        // 🟢 Static Data Engine: Loads JSON (0 Database Reads)
+        async function loadDataFromJSON() {
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -477,68 +384,31 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: आख़िरी मैसेज का टाइमस्टैम्प (Timestamp) निकालें
-            let lastTimestampMs = 0;
-            if (allNotificationsData.length > 0) {
-                const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
-                if (maxTime > 0) lastTimestampMs = maxTime;
+            try {
+                const response = await fetch('data.json?v=' + Date.now());
+                const freshData = await response.json();
+
+                if (freshData.app_settings && freshData.app_settings.total_users_count) {
+                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${freshData.app_settings.total_users_count} Users`;
+                }
+
+                if (freshData.notifications && Array.isArray(freshData.notifications)) {
+                    let fetchedList = freshData.notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    // Purge Layer: केवल टॉप 15-20 हालिया मैसेज रखेगा
+                    fetchedList = fetchedList.slice(0, MAX_MESSAGES_LIMIT);
+
+                    allNotificationsData = fetchedList;
+                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+
+                    const spinner = document.getElementById('loading-spinner');
+                    if (spinner) spinner.remove();
+
+                    renderFilteredNotifications();
+                }
+            } catch (error) {
+                console.error("data.json फ़ाइल लोड करने में एरर:", error);
             }
-
-            // Step 3: केवल नए संदेशों के लिए क्वैरी बनाएँ
-            let q;
-            if (lastTimestampMs > 0) {
-                const lastDate = new Date(lastTimestampMs);
-                const firestoreTimestamp = Timestamp.fromDate(lastDate);
-                q = query(
-                    collection(db, "notifications"), 
-                    where("timestamp", ">", firestoreTimestamp),
-                    orderBy("timestamp", "desc")
-                );
-            } else {
-                // पहली बार में केवल 15 रिकॉर्ड्स लाएगा
-                q = query(
-                    collection(db, "notifications"), 
-                    orderBy("timestamp", "desc"), 
-                    limit(15)
-                );
-            }
-
-            // Step 4: रियल-टाइम सिंक लिसनर
-            onSnapshot(q, (snapshot) => {
-                const spinner = document.getElementById('loading-spinner');
-                if (spinner) spinner.remove();
-
-                if (snapshot.empty) return;
-
-                const newFetchedData = [];
-                snapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    newFetchedData.push({
-                        id: docSnap.id,
-                        adminName: data.adminName || 'Admin Notification',
-                        title: data.title || '',
-                        message: data.message || '',
-                        mediaUrl: data.mediaUrl || null,
-                        mediaType: data.mediaType || 'none',
-                        fileName: data.fileName || '',
-                        timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
-                    });
-                });
-
-                newFetchedData.reverse();
-
-                // नए मैसेज को लोकल डेटाबेस के साथ मर्ज करें
-                const existingMap = new Map();
-                allNotificationsData.forEach(item => existingMap.set(item.id, item));
-                newFetchedData.forEach(item => existingMap.set(item.id, item));
-
-                allNotificationsData = Array.from(existingMap.values());
-                allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
-
-                // लोकल स्टोरेज अपडेट करें
-                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
-                renderFilteredNotifications();
-            });
         }
 
         function renderFilteredNotifications() {
@@ -547,7 +417,7 @@
             let dataToDisplay = [...allNotificationsData];
 
             if (activeTab === 'recent') {
-                dataToDisplay = dataToDisplay.slice(-2);
+                dataToDisplay = dataToDisplay.slice(0, 2);
             } else if (activeTab === 'media') {
                 dataToDisplay = dataToDisplay.filter(item => item.mediaUrl && item.mediaType !== 'none');
             }
@@ -558,9 +428,7 @@
             }
 
             dataToDisplay.forEach((data) => {
-                const docId = data.id;
-                const msgTime = data.timestampMs ? new Date(data.timestampMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
-                const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
+                const msgTime = data.timestamp ? new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
 
                 let mediaHTML = '';
                 if (data.mediaType === 'image' && data.mediaUrl) {
@@ -590,27 +458,13 @@
                                 <i class="fas fa-download"></i>
                             </a>
                         </div>`;
-                } else if (data.mediaType === 'file' && data.mediaUrl) {
-                    mediaHTML = `
-                        <div class="flex items-center justify-between p-3 my-2 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-800 font-bold">
-                            <div class="flex items-center truncate mr-2">
-                                <i class="fas fa-file-alt text-2xl text-blue-600 mr-2"></i>
-                                <span class="truncate">${data.fileName || 'Document File'}</span>
-                            </div>
-                            <a href="${data.mediaUrl}" download target="_blank" class="p-2 bg-blue-600 text-white rounded-lg text-[10px] hover:bg-blue-700">
-                                <i class="fas fa-download"></i>
-                            </a>
-                        </div>`;
                 }
 
                 messagesContainer.innerHTML += `
                     <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 max-w-[95%] my-2 relative mx-auto">
                         <div class="text-xs font-bold text-teal-800 mb-1 flex justify-between items-center">
                             <span>📢 ${data.adminName || 'Admin Notification'}</span>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
-                                ${isAdmin ? `<button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1"><i class="fas fa-trash-alt"></i></button>` : ''}
-                            </div>
+                            <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
                         </div>
                         
                         ${data.title ? `<h4 class="font-bold text-sm text-slate-900 mb-1">${data.title}</h4>` : ''}
@@ -626,19 +480,9 @@
                     </div>
                 `;
             });
-
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        window.deleteNotification = async function(docId) {
-            if (confirm("नोटिफिकेशन डिलीट करना चाहते हैं?")) {
-                await deleteDoc(doc(db, "notifications", docId));
-                allNotificationsData = allNotificationsData.filter(item => item.id !== docId);
-                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
-                renderFilteredNotifications();
-            }
-        };
-
+        // Admin Action: Post message & trigger automatic updated data.json download
         if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
@@ -666,22 +510,48 @@
                         else mediaType = 'file';
                     }
 
-                    await addDoc(collection(db, "notifications"), {
-                        adminName: currentUser ? currentUser.name : "Admin",
+                    const newMsg = {
+                        id: 'msg_' + Date.now(),
+                        adminName: currentUser ? currentUser.name : "MP Outsource Admin",
                         title: title || "महत्वपूर्ण सूचना",
                         message: message,
                         mediaUrl: mediaUrl,
                         mediaType: mediaType,
                         fileName: fileName,
-                        timestamp: serverTimestamp()
-                    });
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // Add new message at top & enforce limit
+                    allNotificationsData.unshift(newMsg);
+                    allNotificationsData = allNotificationsData.slice(0, MAX_MESSAGES_LIMIT);
+
+                    // Update Local Storage
+                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                    renderFilteredNotifications();
+
+                    // Generate updated data.json blob and trigger auto-download for admin
+                    const jsonContent = JSON.stringify({
+                        app_settings: {
+                            total_users_count: 12500,
+                            last_updated: new Date().toISOString()
+                        },
+                        notifications: allNotificationsData
+                    }, null, 2);
+
+                    const blob = new Blob([jsonContent], { type: 'application/json' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'data.json';
+                    a.click();
+
+                    alert("संदेश जोड़ा गया! नई data.json फ़ाइल डाउनलोड हो गई है। इसे अपने होस्टिंग/GitHub फ़ोल्डर में रिप्लेस करें।");
 
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
                     clearFileBtn.click();
 
                 } catch (err) {
-                    alert("अपलोड एरर: " + err.message);
+                    alert("अपलोड में त्रुटि: " + err.message);
                 } finally {
                     sendBtn.disabled = false;
                     uploadProgress.classList.add('hidden');
