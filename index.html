@@ -193,7 +193,7 @@
     <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
@@ -347,21 +347,6 @@
             }
         });
 
-        // 🟢 Analytics अपडेट फ़ंक्शन (Safe Increment)
-        async function incrementUserAnalyticsCount() {
-            try {
-                const statsRef = doc(db, "analytics", "stats");
-                const statsDoc = await getDoc(statsRef);
-                if (statsDoc.exists()) {
-                    await setDoc(statsRef, { totalUsers: increment(1) }, { merge: true });
-                } else {
-                    await setDoc(statsRef, { totalUsers: 1 });
-                }
-            } catch (e) {
-                console.warn("Analytics Count Update Bypassed", e);
-            }
-        }
-
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
@@ -418,7 +403,6 @@
                             createdAt: serverTimestamp(),
                             lastLogin: serverTimestamp()
                         });
-                        await incrementUserAnalyticsCount();
                     } else {
                         const existingDoc = checkSnap.docs[0];
                         userData.name = existingDoc.data().name || name;
@@ -452,58 +436,37 @@
 
             requestNotificationPermission();
             loadTotalUsersCountOnceDaily();
-            loadNotifications();
+            syncMessagesWhatsAppStyle();
         }
 
-        // 🟢 DIRECT FIX: आपके असली 'users' कलेक्शन की डायरेक्ट सेफ़ गिनती
+        // 🟢 24 घंटे में केवल 1 Read लेकर लोकल मेमोरी (LocalStorage) में सेव रखेगा
         async function loadTotalUsersCountOnceDaily() {
             const cachedCount = localStorage.getItem('user_count_cache');
             const lastFetchedTime = localStorage.getItem('user_count_last_fetched');
             const now = Date.now();
-            const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 घण्टे
+            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-            // अगर 24 घंटे नहीं हुए हैं, तो लोकल कैश से तुरंत दिखाएं
             if (cachedCount && lastFetchedTime && (now - parseInt(lastFetchedTime)) < ONE_DAY_MS) {
                 userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
                 return;
             }
 
             try {
-                // 1. कोशिश करें कि analytics/stats से मिले
-                const statsRef = doc(db, "analytics", "stats");
-                const statsDoc = await getDoc(statsRef);
-                let count = 0;
-
-                if (statsDoc.exists()) {
-                    count = statsDoc.data().totalUsers || 0;
-                } else {
-                    // 2. फ़ैलबैक: सीधे 'users' कलेक्शन से यूज़र्स की गिनती निकालें
-                    const snapshot = await getDocs(collection(db, "users"));
-                    count = snapshot.size;
-                }
-
-                // लोकल स्टोरेज में 24 घंटे के लिए लॉक करें
+                const snapshot = await getDocs(collection(db, "users"));
+                const count = snapshot.size;
                 localStorage.setItem('user_count_cache', count);
                 localStorage.setItem('user_count_last_fetched', now.toString());
                 userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${count} Users`;
-
             } catch (e) {
-                // अगर कोई भी त्रुटि आए तो मौजूदा users की डायरेक्ट Query से गिनती करें
-                try {
-                    const snapshot = await getDocs(collection(db, "users"));
-                    const directCount = snapshot.size;
-                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${directCount} Users`;
-                    localStorage.setItem('user_count_cache', directCount);
-                    localStorage.setItem('user_count_last_fetched', now.toString());
-                } catch(err) {
-                    if (cachedCount) {
-                        userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
-                    }
+                if (cachedCount) {
+                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
                 }
             }
         }
 
-        function loadNotifications() {
+        // 🟢 WHATSAPP POSTMAN ARCHITECTURE (Delta Fetching - 0 Waste Reads)
+        function syncMessagesWhatsAppStyle() {
+            // Step 1: सबसे पहले LocalStorage से ही पुराना डेटा तुरंत स्क्रीन पर लोड कर दो (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -514,20 +477,43 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            const q = query(
-                collection(db, "notifications"), 
-                orderBy("timestamp", "desc"), 
-                limit(15)
-            );
+            // Step 2: पता लगाओ कि आख़िरी मैसेज किस टाइमस्टैम्प पर आया था
+            let lastTimestampMs = 0;
+            if (allNotificationsData.length > 0) {
+                const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
+                if (maxTime > 0) lastTimestampMs = maxTime;
+            }
 
+            // Step 3: व्हाट्सएप कॉन्सेप्ट - केवल वही मैसेज माँगेंगे जो लोकल टाइमस्टैम्प से 'नये' हैं
+            let q;
+            if (lastTimestampMs > 0) {
+                const lastDate = new Date(lastTimestampMs);
+                const firestoreTimestamp = Timestamp.fromDate(lastDate);
+                q = query(
+                    collection(db, "notifications"), 
+                    where("timestamp", ">", firestoreTimestamp),
+                    orderBy("timestamp", "desc")
+                );
+            } else {
+                // पहली बार ऐप शुरू होने पर ही केवल अंतिम 15 रिकॉर्ड्स लाएगा
+                q = query(
+                    collection(db, "notifications"), 
+                    orderBy("timestamp", "desc"), 
+                    limit(15)
+                );
+            }
+
+            // Step 4: व्हाट्सएप सिंक लिसनर
             onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
                 if (spinner) spinner.remove();
 
-                const fetchedData = [];
+                if (snapshot.empty) return;
+
+                const newFetchedData = [];
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
-                    fetchedData.push({
+                    newFetchedData.push({
                         id: docSnap.id,
                         adminName: data.adminName || 'Admin Notification',
                         title: data.title || '',
@@ -539,9 +525,17 @@
                     });
                 });
 
-                fetchedData.reverse();
-                allNotificationsData = fetchedData;
+                newFetchedData.reverse();
 
+                // नये संदेशों को पुराने डेटाबेस में मर्ज करें और डुप्लिकेट्स को हटाएँ
+                const existingMap = new Map();
+                allNotificationsData.forEach(item => existingMap.set(item.id, item));
+                newFetchedData.forEach(item => existingMap.set(item.id, item));
+
+                allNotificationsData = Array.from(existingMap.values());
+                allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
+
+                // लोकल स्टोरेज (फ़ोन की परमानेंट स्टोरेज) को अपडेट करें
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
@@ -639,6 +633,9 @@
         window.deleteNotification = async function(docId) {
             if (confirm("नोटिफिकेशन डिलीट करना चाहते हैं?")) {
                 await deleteDoc(doc(db, "notifications", docId));
+                allNotificationsData = allNotificationsData.filter(item => item.id !== docId);
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                renderFilteredNotifications();
             }
         };
 
@@ -695,6 +692,7 @@
         logoutBtn.addEventListener('click', () => {
             if (confirm("लॉगआउट करना चाहते हैं?")) {
                 localStorage.removeItem('notification_user');
+                localStorage.removeItem('cached_notifications');
                 location.reload();
             }
         });
