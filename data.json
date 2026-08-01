@@ -1,38 +1,18 @@
 {
   "app_settings": {
     "total_users_count": 12500,
-    "last_updated": "2026-08-01T21:30:00Z"
+    "last_updated": "2026-08-01T16:46:50.512Z"
   },
   "notifications": [
     {
-      "id": "msg_003",
+      "id": "msg_1785602810512",
       "adminName": "MP Outsource Admin",
-      "title": "🎥 पोर्टल ट्रेनिंग गाइड वीडियो",
-      "message": "पोर्टल पर नया डेटा फॉर्म कैसे भरना है, इसका पूरा ट्यूटोरियल इस वीडियो में देखें।",
-      "mediaUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      "mediaType": "video",
-      "fileName": "Training_Tutorial.mp4",
-      "timestamp": "2026-08-01T18:00:00Z"
-    },
-    {
-      "id": "msg_002",
-      "adminName": "MP Outsource Admin",
-      "title": "📄 शासकीय आदेश डाउनलोड करें",
-      "message": "विभागीय पत्र क्रमांक 402/2026 की प्रति नीचे संलग्न है। डाउनलोड करके अवश्य पढ़ें।",
-      "mediaUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      "mediaType": "pdf",
-      "fileName": "Departmental_Order_2026.pdf",
-      "timestamp": "2026-08-01T14:20:00Z"
-    },
-    {
-      "id": "msg_001",
-      "adminName": "MP Outsource Admin",
-      "title": "📌 आउटसोर्स कर्मचारियों के लिए आवश्यक सूचना",
-      "message": "नवीनतम पोर्टल अपडेट जारी कर दिया गया है। सभी सदस्य अपने दस्तावेज़ों का सत्यापन समय पर पूरा कर लें।",
-      "mediaUrl": "https://images.unsplash.com/photo-1575936123452-b67c3203c357?w=500",
-      "mediaType": "image",
-      "fileName": "Notice_Photo.jpg",
-      "timestamp": "2026-08-01T10:15:00Z"
+      "title": "महत्वपूर्ण सूचना",
+      "message": "Outsource Dynamic Media Hub में आपका स्वागत है।",
+      "mediaUrl": null,
+      "mediaType": "none",
+      "fileName": "",
+      "timestamp": "2026-08-01T16:46:50.512Z"
     }
   ]
 }
