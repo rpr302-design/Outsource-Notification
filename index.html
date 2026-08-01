@@ -347,19 +347,18 @@
             }
         });
 
-        // 🟢 नया यूज़र जुड़ने पर analytics कलेक्शन का डॉक्युमेंट ऑटो-क्रिएट होगा
+        // 🟢 Analytics अपडेट फ़ंक्शन (Safe Increment)
         async function incrementUserAnalyticsCount() {
             try {
                 const statsRef = doc(db, "analytics", "stats");
                 const statsDoc = await getDoc(statsRef);
-
                 if (statsDoc.exists()) {
                     await setDoc(statsRef, { totalUsers: increment(1) }, { merge: true });
                 } else {
                     await setDoc(statsRef, { totalUsers: 1 });
                 }
             } catch (e) {
-                console.error("Analytics Count Update Error", e);
+                console.warn("Analytics Count Update Bypassed", e);
             }
         }
 
@@ -419,7 +418,6 @@
                             createdAt: serverTimestamp(),
                             lastLogin: serverTimestamp()
                         });
-                        // 🟢 नया अकाउंट बनने पर ही काउंट +1 बढ़ेगा
                         await incrementUserAnalyticsCount();
                     } else {
                         const existingDoc = checkSnap.docs[0];
@@ -457,38 +455,50 @@
             loadNotifications();
         }
 
-        // 🟢 24 घंटे में केवल 1 Read लेगा (Analytics collection से)
+        // 🟢 DIRECT FIX: आपके असली 'users' कलेक्शन की डायरेक्ट सेफ़ गिनती
         async function loadTotalUsersCountOnceDaily() {
             const cachedCount = localStorage.getItem('user_count_cache');
             const lastFetchedTime = localStorage.getItem('user_count_last_fetched');
             const now = Date.now();
-            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+            const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 घण्टे
 
+            // अगर 24 घंटे नहीं हुए हैं, तो लोकल कैश से तुरंत दिखाएं
             if (cachedCount && lastFetchedTime && (now - parseInt(lastFetchedTime)) < ONE_DAY_MS) {
                 userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
                 return;
             }
 
             try {
+                // 1. कोशिश करें कि analytics/stats से मिले
                 const statsRef = doc(db, "analytics", "stats");
                 const statsDoc = await getDoc(statsRef);
                 let count = 0;
-                
+
                 if (statsDoc.exists()) {
                     count = statsDoc.data().totalUsers || 0;
                 } else {
-                    // अगर 'analytics' न मिले तो खुद ऑटो-जनरेट करेगा
+                    // 2. फ़ैलबैक: सीधे 'users' कलेक्शन से यूज़र्स की गिनती निकालें
                     const snapshot = await getDocs(collection(db, "users"));
                     count = snapshot.size;
-                    await setDoc(statsRef, { totalUsers: count });
                 }
 
+                // लोकल स्टोरेज में 24 घंटे के लिए लॉक करें
                 localStorage.setItem('user_count_cache', count);
                 localStorage.setItem('user_count_last_fetched', now.toString());
                 userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${count} Users`;
+
             } catch (e) {
-                if (cachedCount) {
-                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
+                // अगर कोई भी त्रुटि आए तो मौजूदा users की डायरेक्ट Query से गिनती करें
+                try {
+                    const snapshot = await getDocs(collection(db, "users"));
+                    const directCount = snapshot.size;
+                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${directCount} Users`;
+                    localStorage.setItem('user_count_cache', directCount);
+                    localStorage.setItem('user_count_last_fetched', now.toString());
+                } catch(err) {
+                    if (cachedCount) {
+                        userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
+                    }
                 }
             }
         }
