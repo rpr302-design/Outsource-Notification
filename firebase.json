@@ -1,13 +1,17 @@
+
 {
   "hosting": {
-    "public": ".",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/data.json",
+        "destination": "https://firebasestorage.googleapis.com/v0/b/push-notifaction-c3460.firebasestorage.app/o/data.json?alt=media"
+      }
     ]
-  },
-  "functions": {
-    "source": "functions"
   }
 }
