@@ -200,7 +200,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, limit, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
@@ -401,6 +401,7 @@
 
                     let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
 
+                    // Auto-Creates 'users' collection on first entry
                     if (checkSnap.empty) {
                         await addDoc(collection(db, "users"), {
                             name,
@@ -531,6 +532,7 @@
                             mediaUrl: data.mediaUrl || null,
                             mediaType: data.mediaType || 'none',
                             fileName: data.fileName || '',
+                            storagePath: data.storagePath || null, // Storage file cleanup ID
                             timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
                         });
                     });
@@ -647,12 +649,29 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
+        // 🟢 AUTO CLEANUP: Firestore Database + Firebase Storage File Eraser
         window.deleteNotification = async function(docId) {
-            if (confirm("नोटिफिकेशन डिलीट करना चाहते हैं?")) {
-                await deleteDoc(doc(db, "notifications", docId));
-                allNotificationsData = allNotificationsData.filter(item => item.id !== docId);
-                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
-                renderFilteredNotifications();
+            if (confirm("नोटिफिकेशन और फाइल (यदि कोई है) हमेशा के लिए डिलीट करना चाहते हैं?")) {
+                try {
+                    const targetItem = allNotificationsData.find(item => item.id === docId);
+
+                    // 1. अगर मीडिया फ़ाइल मौजूद है, तो Firebase Storage से भी डिलीट करें
+                    if (targetItem && targetItem.storagePath) {
+                        const fileRef = ref(storage, targetItem.storagePath);
+                        await deleteObject(fileRef).catch(err => console.log("Storage file already removed or error:", err));
+                    }
+
+                    // 2. Firestore Document डिलीट करें
+                    await deleteDoc(doc(db, "notifications", docId));
+
+                    // 3. लोकल एरे व LocalStorage अपडेट करें
+                    allNotificationsData = allNotificationsData.filter(item => item.id !== docId);
+                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                    renderFilteredNotifications();
+
+                } catch(error) {
+                    alert("डिलीट करने में एरर आया: " + error.message);
+                }
             }
         };
 
@@ -669,11 +688,14 @@
                 let mediaUrl = null;
                 let mediaType = 'none';
                 let fileName = '';
+                let storagePath = null;
 
                 try {
                     if (selectedFile) {
                         fileName = selectedFile.name;
-                        const storageRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
+                        storagePath = `uploads/${Date.now()}_${selectedFile.name}`;
+                        const storageRef = ref(storage, storagePath);
+                        
                         const uploadResult = await uploadBytes(storageRef, selectedFile);
                         mediaUrl = await getDownloadURL(uploadResult.ref);
 
@@ -683,6 +705,7 @@
                         else mediaType = 'file';
                     }
 
+                    // Auto-Creates 'notifications' collection if not present
                     await addDoc(collection(db, "notifications"), {
                         adminName: currentUser ? currentUser.name : "Admin",
                         title: title || "महत्वपूर्ण सूचना",
@@ -690,6 +713,7 @@
                         mediaUrl: mediaUrl,
                         mediaType: mediaType,
                         fileName: fileName,
+                        storagePath: storagePath,
                         timestamp: serverTimestamp()
                     });
 
@@ -697,7 +721,7 @@
                     document.getElementById('admin-msg-body').value = '';
                     clearFileBtn.click();
 
-                    // खुद के नया मैसेज भेजने पर एक बार नया मैसेज फेच कर लो
+                    // अपने द्वारा भेजा गया मैसेज तुरंत सिंक करें
                     syncMessagesWhatsAppStyle();
 
                 } catch (err) {
