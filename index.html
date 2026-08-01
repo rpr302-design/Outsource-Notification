@@ -51,21 +51,12 @@
 
                 <div id="new-user-fields" class="hidden space-y-4 border-t border-slate-800 pt-3">
                     <div class="bg-teal-900/40 p-2.5 rounded-lg border border-teal-500/30 text-[11px] text-teal-300 flex items-center">
-                        <i class="fas fa-user-plus mr-2 text-sm"></i> साइन इन करने के लिए नाम व जेंडर दर्ज करें:
+                        <i class="fas fa-user-plus mr-2 text-sm"></i> नया नंबर मिला! कृपया अपना नाम दर्ज करें:
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-1">आपका पूरा नाम</label>
                         <input type="text" id="user-name" placeholder="जैसे: रोशन प्रजापति" 
                                class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">जेंडर (Gender)</label>
-                        <select id="user-gender" class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
-                            <option value="Male">पुरुष (Male)</option>
-                            <option value="Female">महिला (Female)</option>
-                            <option value="Other">अन्य (Other)</option>
-                        </select>
                     </div>
                 </div>
 
@@ -75,7 +66,7 @@
             </form>
 
             <div class="text-center text-[11px] text-slate-500 pb-2">
-                🔒 Static JSON Model (0 Reads / Writes)
+                🔒 Firebase Storage JSON Engine (0 Database Cost)
             </div>
         </div>
 
@@ -164,13 +155,13 @@
                 </div>
 
                 <div id="upload-progress" class="hidden text-[11px] font-bold text-teal-700 text-center py-1 bg-teal-50 rounded">
-                    <i class="fas fa-spinner fa-spin mr-1"></i> अपडेट प्रक्रिया में है...
+                    <i class="fas fa-spinner fa-spin mr-1"></i> स्टोरेज में लाइव अपडेट हो रहा है...
                 </div>
             </div>
 
             <!-- User Footer -->
             <div id="user-footer" class="bg-slate-200 px-4 py-2.5 text-center text-[11px] text-slate-600 border-t z-10">
-                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन पोस्ट जारी कर सकते हैं।
+                <i class="fas fa-info-circle mr-1"></i> केवल एडमिन मीडिया फ़ाइलें व संदेश पोस्ट कर सकते हैं।
             </div>
         </div>
 
@@ -190,10 +181,10 @@
         <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4"></div>
     </div>
 
-    <!-- Firebase Storage Modular SDK (केवल फाइल्स अपलोड के लिए) -->
+    <!-- Firebase Modular SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+        import { getStorage, ref, uploadBytes, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
@@ -369,11 +360,12 @@
             }
 
             requestNotificationPermission();
-            loadDataFromJSON();
+            loadDataFromFirebaseStorage();
         }
 
-        // 🟢 Static Data Engine: Loads JSON (0 Database Reads)
-        async function loadDataFromJSON() {
+        // 🟢 Direct Fetch Engine from Firebase Storage URL (0 Firestore Reads)
+        async function loadDataFromFirebaseStorage() {
+            // Step 1: Render Local Storage Cache Instantly
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -384,8 +376,12 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
+            // Step 2: Fetch Live data.json directly from Firebase Storage
             try {
-                const response = await fetch('data.json?v=' + Date.now());
+                const jsonStorageRef = ref(storage, 'data.json');
+                const liveUrl = await getDownloadURL(jsonStorageRef);
+
+                const response = await fetch(liveUrl + '&t=' + Date.now());
                 const freshData = await response.json();
 
                 if (freshData.app_settings && freshData.app_settings.total_users_count) {
@@ -395,7 +391,7 @@
                 if (freshData.notifications && Array.isArray(freshData.notifications)) {
                     let fetchedList = freshData.notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     
-                    // Purge Layer: केवल टॉप 15-20 हालिया मैसेज रखेगा
+                    // Purge Layer: केवल टॉप 20 मैसेज रखेगा
                     fetchedList = fetchedList.slice(0, MAX_MESSAGES_LIMIT);
 
                     allNotificationsData = fetchedList;
@@ -407,7 +403,9 @@
                     renderFilteredNotifications();
                 }
             } catch (error) {
-                console.error("data.json फ़ाइल लोड करने में एरर:", error);
+                console.warn("Storage data.json फ़ाइल फ़ेच करने में सूचना:", error.message);
+                const spinner = document.getElementById('loading-spinner');
+                if (spinner) spinner.remove();
             }
         }
 
@@ -482,13 +480,13 @@
             });
         }
 
-        // Admin Action: Post message & trigger automatic updated data.json download
+        // 🚀 Admin Action: Posts message & DIRECTLY OVERWRITES data.json inside Firebase Storage
         if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
                 const message = document.getElementById('admin-msg-body').value.trim();
 
-                if (!message && !selectedFile) { alert("कृपया सन्देश लिखें या गैलरी से फ़ाइल चुनें!"); return; }
+                if (!message && !selectedFile) { alert("कृपया सन्देश लिखें या फ़ाइल चुनें!"); return; }
 
                 sendBtn.disabled = true;
                 uploadProgress.classList.remove('hidden');
@@ -498,10 +496,11 @@
                 let fileName = '';
 
                 try {
+                    // Step 1: फ़ाइल हो तो उसे Storage में अपलोड करें
                     if (selectedFile) {
                         fileName = selectedFile.name;
-                        const storageRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
-                        const uploadResult = await uploadBytes(storageRef, selectedFile);
+                        const mediaStorageRef = ref(storage, `uploads/${Date.now()}_${selectedFile.name}`);
+                        const uploadResult = await uploadBytes(mediaStorageRef, selectedFile);
                         mediaUrl = await getDownloadURL(uploadResult.ref);
 
                         if (selectedFile.type.startsWith('image/')) mediaType = 'image';
@@ -510,6 +509,7 @@
                         else mediaType = 'file';
                     }
 
+                    // Step 2: नया ऑब्जेक्ट बनाएँ
                     const newMsg = {
                         id: 'msg_' + Date.now(),
                         adminName: currentUser ? currentUser.name : "MP Outsource Admin",
@@ -521,16 +521,11 @@
                         timestamp: new Date().toISOString()
                     };
 
-                    // Add new message at top & enforce limit
                     allNotificationsData.unshift(newMsg);
                     allNotificationsData = allNotificationsData.slice(0, MAX_MESSAGES_LIMIT);
 
-                    // Update Local Storage
-                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
-                    renderFilteredNotifications();
-
-                    // Generate updated data.json blob and trigger auto-download for admin
-                    const jsonContent = JSON.stringify({
+                    // Step 3: नए डाटा को JSON स्ट्रिंग बनाएँ
+                    const updatedJsonString = JSON.stringify({
                         app_settings: {
                             total_users_count: 12500,
                             last_updated: new Date().toISOString()
@@ -538,13 +533,17 @@
                         notifications: allNotificationsData
                     }, null, 2);
 
-                    const blob = new Blob([jsonContent], { type: 'application/json' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = 'data.json';
-                    a.click();
+                    // Step 4: Firebase Storage की data.json फ़ाइल को डायरेक्ट ओवरराइट (Save) करें
+                    const jsonStorageRef = ref(storage, 'data.json');
+                    await uploadString(jsonStorageRef, updatedJsonString, 'raw', {
+                        contentType: 'application/json'
+                    });
 
-                    alert("संदेश जोड़ा गया! नई data.json फ़ाइल डाउनलोड हो गई है। इसे अपने होस्टिंग/GitHub फ़ोल्डर में रिप्लेस करें।");
+                    // Step 5: लोकल स्टोरेज और UI अपडेट करें
+                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                    renderFilteredNotifications();
+
+                    alert("🎉 सन्देश लाइव हो गया! (data.json फ़ायरबेस स्टोरेज में ऑटोमैटिक अपडेट हो गई है)");
 
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
