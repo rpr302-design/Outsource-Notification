@@ -201,8 +201,8 @@
         const ADMIN_PHONE_NUMBER = "9993332211";
         const MAX_MESSAGES_LIMIT = 20;
         
-        // 🚀 बिना टोकन वाला स्वच्छ Public URL (जो रूल्स पब्लिक होने पर कभी बंद नहीं होता)
-        const DIRECT_DATA_JSON_URL = "https://firebasestorage.googleapis.com/v0/b/push-notifaction-c3460.firebasestorage.app/o/data.json?alt=media";
+        // 🚀 Relative Rewrite Path (CORS Block Bypass)
+        const DIRECT_DATA_JSON_URL = "/api/data.json";
 
         let currentUser = null;
         let selectedFile = null;
@@ -366,7 +366,7 @@
             loadDataFromFirebaseStorage();
         }
 
-        // 🟢 Direct Public Token-Free Engine (0 Firestore Cost)
+        // 🟢 Direct Fetch Engine (Via Hosting Rewrite)
         async function loadDataFromFirebaseStorage() {
             // Step 1: Render Local Storage Cache Instantly
             const localCachedData = localStorage.getItem('cached_notifications');
@@ -379,9 +379,9 @@
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            // Step 2: Fetch Live data.json via Direct Public URL with Cache Buster
+            // Step 2: Fetch Live data.json via Rewrite Endpoint with Cache Buster
             try {
-                const response = await fetch(DIRECT_DATA_JSON_URL + "&t=" + Date.now());
+                const response = await fetch(DIRECT_DATA_JSON_URL + "?t=" + Date.now());
 
                 if (!response.ok) {
                     throw new Error(`HTTP Error! Status: ${response.status}`);
@@ -537,7 +537,7 @@
                         notifications: allNotificationsData
                     }, null, 2);
 
-                    // Overwrite data.json in Storage directly
+                    // Storage में data.json को ओवरराइट करें
                     const jsonStorageRef = ref(storage, 'data.json');
                     await uploadString(jsonStorageRef, updatedJsonString, 'raw', {
                         contentType: 'application/json'
@@ -546,7 +546,7 @@
                     localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                     renderFilteredNotifications();
 
-                    alert("🎉 सन्देश लाइव हो गया! (Firebase Storage में data.json ऑटो-अपडेट हो गई है)");
+                    alert("🎉 सन्देश लाइव हो गया!");
 
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
