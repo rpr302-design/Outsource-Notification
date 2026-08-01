@@ -134,13 +134,13 @@
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
-            authDomain: "push-notifaction-c3460.firebaseapp.com",
-            projectId: "push-notifaction-c3460",
-            storageBucket: "push-notifaction-c3460.appspot.com", // Updated bucket host
-            messagingSenderId: "649136234508",
-            appId: "1:649136234508:web:39b8e06150890d360ace29"
-        };
+    apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
+    authDomain: "push-notifaction-c3460.firebaseapp.com",
+    projectId: "push-notifaction-c3460",
+    storageBucket: "push-notifaction-c3460.firebasestorage.app", // exact match from console
+    messagingSenderId: "649136234508",
+    appId: "1:649136234508:web:39b8e06150890d360ace29"
+};
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
