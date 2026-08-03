@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Outsource Dynamic Media Hub - Modern Locked Gate</title>
+    <title>Outsource Dynamic Media Hub - FCM Token & Double Tick Fixed</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -23,46 +23,63 @@
             height: 100vh;
             height: 100dvh;
         }
-
-        /* Lock Icon Pulse Indicator Animation */
-        @keyframes pointerPulse {
-            0% { transform: translateY(0); opacity: 1; }
-            50% { transform: translateY(-8px); opacity: 0.6; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-        .pointer-anim { animation: pointerPulse 1.2s infinite ease-in-out; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-800 app-height flex flex-col justify-center items-center font-sans overflow-hidden relative">
-
-    <!-- Pointer Overlay showing where the lock icon is -->
-    <div id="lock-pointer-overlay" class="hidden fixed top-2 left-4 z-50 flex items-center space-x-2 bg-amber-400 text-slate-900 px-3 py-1.5 rounded-full font-bold text-xs shadow-2xl pointer-anim">
-        <i class="fas fa-arrow-up text-sm"></i>
-        <span>यहाँ 🔒 आइकन पर टैप करके Allow करें</span>
-    </div>
+<body class="bg-slate-900 text-slate-800 app-height flex flex-col justify-center items-center font-sans overflow-hidden">
 
     <!-- App Container -->
     <div class="w-full max-w-md bg-white app-height sm:h-[720px] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-0 sm:border sm:border-slate-700/50">
 
-        <!-- 1. Phone Input Screen -->
+        <!-- Notification Blocked Banner -->
+        <div id="blocked-banner" class="hidden bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md z-30">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-bell-slash text-base"></i>
+                <span id="banner-text">नोटिफिकेशन बंद हैं! अपडेट्स पाने के लिए ऑन करें।</span>
+            </div>
+            <button id="notif-toggle-btn" onclick="requestNotificationPermission()" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold transition">Turn On</button>
+        </div>
+
+        <!-- 1. Smart Registration / Login Screen -->
         <div id="registration-screen" class="p-6 sm:p-8 flex flex-col justify-between h-full bg-slate-900 text-white overflow-y-auto">
-            <div class="text-center mt-6 sm:mt-10">
-                <div class="w-20 h-20 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-teal-500/10">
-                    <i class="fas fa-comments text-3xl text-teal-400"></i>
+            <div class="text-center mt-4 sm:mt-6">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <i class="fas fa-comments text-2xl sm:text-3xl text-teal-400"></i>
                 </div>
-                <h2 class="text-2xl font-bold tracking-tight text-white">Outsource Connect</h2>
-                <p class="text-xs text-slate-400 mt-1">अपना 10 अंकों का मोबाइल नंबर दर्ज करें</p>
+                <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Outsource Connect</h2>
+                <p class="text-xs text-slate-400 mt-1">मोबाइल नंबर ही एक्टिव खाता</p>
             </div>
 
-            <form id="phone-auth-form" class="space-y-4 my-auto py-4">
+            <form id="login-form" class="space-y-4 my-auto py-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर</label>
-                    <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर लिखें" 
-                           class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none font-mono">
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर (10 अंक)</label>
+                    <div class="flex space-x-2">
+                        <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर लिखें" 
+                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                    </div>
                 </div>
 
-                <button type="submit" id="phone-submit-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center text-sm transition">
-                    <span id="phone-btn-text">आगे बढ़ें</span> <i class="fas fa-arrow-right ml-2"></i>
+                <div id="new-user-fields" class="hidden space-y-4 border-t border-slate-800 pt-3">
+                    <div class="bg-teal-900/40 p-2.5 rounded-lg border border-teal-500/30 text-[11px] text-teal-300 flex items-center">
+                        <i class="fas fa-user-plus mr-2 text-sm"></i> नया नंबर मिला! कृपया अपना खाता बनाने के लिए नाम व जेंडर चुनें:
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">आपका पूरा नाम</label>
+                        <input type="text" id="user-name" placeholder="जैसे: रोशन प्रजापति" 
+                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">जेंडर (Gender)</label>
+                        <select id="user-gender" class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                            <option value="Male">पुरुष (Male)</option>
+                            <option value="Female">महिला (Female)</option>
+                            <option value="Other">अन्य (Other)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center text-sm transition">
+                    <span id="submit-btn-text">आगे बढ़ें / लॉगिन करें</span> <i class="fas fa-arrow-right ml-2"></i>
                 </button>
             </form>
 
@@ -82,11 +99,8 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-sm text-white leading-tight">MP Outsource Media Hub</h3>
-                        <div class="flex items-center space-x-2 text-[11px] text-teal-200 mt-0.5">
-                            <span id="user-display-name" class="font-bold"></span>
-                            <button id="add-name-btn" onclick="promptAddName()" class="hidden bg-amber-400 hover:bg-amber-500 text-slate-900 font-extrabold px-2 py-0.5 rounded-full text-[10px] transition shadow">
-                                <i class="fas fa-user-plus mr-1"></i> + नाम दर्ज करें
-                            </button>
+                        <div class="flex items-center space-x-2 text-[11px] text-teal-200">
+                            <span id="welcome-user">यूज़र</span>
                             <span id="admin-badge" class="hidden bg-amber-500 text-slate-900 font-extrabold px-1.5 py-0.2 rounded text-[9px]">ADMIN</span>
                         </div>
                     </div>
@@ -176,56 +190,6 @@
 
     </div>
 
-    <!-- 🔔 1. Mandatory Notification Permission Request Modal -->
-    <div id="notif-gate-modal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center space-y-4">
-            <div class="w-16 h-16 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
-                <i class="fas fa-bell"></i>
-            </div>
-            <div>
-                <h3 class="font-bold text-lg text-slate-800">सूचनाएं (Notifications) चालू करें</h3>
-                <p class="text-xs text-slate-500 mt-1">लॉगिन पूरा करने और मैसेज प्राप्त करने के लिए अनुमति ऑन करना अनिवार्य है।</p>
-            </div>
-            <button onclick="requestNotifPermissionGate()" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 rounded-xl shadow text-sm transition flex items-center justify-center">
-                <i class="fas fa-check-circle mr-2"></i> Allow / नोटिफिकेशन ऑन करें
-            </button>
-        </div>
-    </div>
-
-    <!-- 🚫 2. Notification Blocked Instruction Modal (Smart Direct Reset Helper) -->
-    <div id="unblock-guide-modal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-left">
-            <div class="text-center">
-                <div class="w-14 h-14 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto mb-2">
-                    <i class="fas fa-bell-slash"></i>
-                </div>
-                <h3 class="font-bold text-base text-slate-800">नोटिफिकेशन ब्लॉक हैं!</h3>
-                <p class="text-xs text-rose-600 font-bold mt-1">लॉगिन करने के लिए सेटिंग्स में जाएँ:</p>
-            </div>
-
-            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2.5 text-xs text-slate-700">
-                <div class="flex items-start space-x-2">
-                    <span class="bg-teal-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
-                    <span>नीचे <strong>"साइट सेटिंग्स खोलें"</strong> दबाएँ या ऊपर एड्रेस बार में 🔒 आइकन टैप करें।</span>
-                </div>
-                <div class="flex items-start space-x-2">
-                    <span class="bg-teal-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
-                    <span><strong>Notifications / Permission</strong> में <strong>Reset / Allow</strong> करें।</span>
-                </div>
-                <div class="flex items-start space-x-2">
-                    <span class="bg-teal-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
-                    <span>वापस आते ही आपका लॉगिन <strong>ऑटोमैटिक</strong> पूरा हो जाएगा!</span>
-                </div>
-            </div>
-
-            <div class="space-y-2">
-                <button onclick="openSystemSettingsOrGuide()" class="w-full bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow text-sm transition text-center flex items-center justify-center">
-                    <i class="fas fa-cog mr-2"></i> सेटिंग्स खोलें / गाइड देखें
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Admin Message Edit Modal -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-4 w-full max-w-sm shadow-2xl space-y-3">
@@ -256,12 +220,12 @@
         <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4" oncontextmenu="return false;"></div>
     </div>
 
-    <!-- Firebase v10 SDK -->
+    <!-- Firebase v10 SDK with Messaging -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, 
-            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove, increment 
+            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
@@ -280,7 +244,11 @@
         const storage = getStorage(app);
         
         let messaging = null;
-        try { messaging = getMessaging(app); } catch (e) {}
+        try {
+            messaging = getMessaging(app);
+        } catch (e) {
+            console.log("Messaging not supported in this browser context", e);
+        }
 
         const MAX_LIKES_LIMIT = 19500; 
         const INITIAL_ADMIN_LOAD_LIMIT = 50; 
@@ -291,19 +259,21 @@
         let selectedFile = null;
         let allNotificationsData = [];
         let activeTab = 'recent';
-        let pendingPhone = null;
+        let pendingNewUserCheck = false;
         let activeEditingDocId = null;
         let adminDisplayLimit = INITIAL_ADMIN_LOAD_LIMIT;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
-        const phoneAuthForm = document.getElementById('phone-auth-form');
+        const loginForm = document.getElementById('login-form');
+        const userNameInput = document.getElementById('user-name');
         const userPhoneInput = document.getElementById('user-phone');
-        const phoneSubmitBtn = document.getElementById('phone-submit-btn');
-        const phoneBtnText = document.getElementById('phone-btn-text');
+        const userGenderInput = document.getElementById('user-gender');
+        const newUserFields = document.getElementById('new-user-fields');
+        const submitBtn = document.getElementById('submit-btn');
+        const submitBtnText = document.getElementById('submit-btn-text');
         const messagesContainer = document.getElementById('messages-container');
-        const userDisplayName = document.getElementById('user-display-name');
-        const addNameBtn = document.getElementById('add-name-btn');
+        const welcomeUserText = document.getElementById('welcome-user');
         const logoutBtn = document.getElementById('logout-btn');
         const adminInputBox = document.getElementById('admin-input-box');
         const userFooter = document.getElementById('user-footer');
@@ -312,19 +282,23 @@
         const fileLabel = document.getElementById('file-label');
         const clearFileBtn = document.getElementById('clear-file-btn');
         const uploadProgress = document.getElementById('upload-progress');
+        const blockedBanner = document.getElementById('blocked-banner');
         const attachmentMenu = document.getElementById('attachment-menu');
         const filePreviewBar = document.getElementById('file-preview-bar');
         const adminBadge = document.getElementById('admin-badge');
         const seeMoreContainer = document.getElementById('see-more-container');
-        const notifGateModal = document.getElementById('notif-gate-modal');
-        const unblockGuideModal = document.getElementById('unblock-guide-modal');
-        const lockPointerOverlay = document.getElementById('lock-pointer-overlay');
 
+        // 🟢 SERVICE WORKER REGISTRATION FUNCTION
         async function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 try {
-                    return await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                } catch (err) { return null; }
+                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                    console.log('Service Worker Registered Successfully:', registration);
+                    return registration;
+                } catch (err) {
+                    console.error('Service Worker Registration Failed:', err);
+                    return null;
+                }
             }
             return null;
         }
@@ -335,7 +309,9 @@
             return text.replace(urlPattern, (url) => `<a href="${url}" target="_blank" class="blue-link">${url}</a>`);
         }
 
-        window.toggleAttachmentMenu = function() { attachmentMenu.classList.toggle('hidden'); };
+        window.toggleAttachmentMenu = function() {
+            attachmentMenu.classList.toggle('hidden');
+        };
 
         window.triggerFileSelect = function(acceptType) {
             fileInput.accept = acceptType;
@@ -357,190 +333,60 @@
             filePreviewBar.classList.add('hidden');
         });
 
-        // AUTO-RESUME DETECTOR WHEN USER COMES BACK FROM SETTINGS
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && pendingPhone) {
-                checkNotificationAndProceed();
-            }
-        });
-
-        // STEP 1: PHONE SUBMISSION GATE
-        phoneAuthForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const phone = userPhoneInput.value.trim();
-            if (phone.length !== 10) { alert('सही 10 अंकों का नंबर लिखें!'); return; }
-
-            pendingPhone = phone;
-            checkNotificationAndProceed();
-        });
-
-        // STEP 2: NOTIFICATION PERMISSION CHECK & GATE
-        function checkNotificationAndProceed() {
-            if (!("Notification" in window)) {
-                completeLoginFlow(pendingPhone);
-                return;
-            }
+        // 🔔 REAL FCM TOKEN GENERATION & FIRESTORE SAVE LOGIC
+        async function fetchAndSaveFCMToken(phone) {
+            if (!("Notification" in window)) return;
 
             if (Notification.permission === 'granted') {
-                notifGateModal.classList.add('hidden');
-                unblockGuideModal.classList.add('hidden');
-                lockPointerOverlay.classList.add('hidden');
-                completeLoginFlow(pendingPhone);
-            } else if (Notification.permission === 'denied') {
-                notifGateModal.classList.add('hidden');
-                unblockGuideModal.classList.remove('hidden');
+                blockedBanner.classList.add('hidden');
             } else {
-                notifGateModal.classList.remove('hidden');
+                blockedBanner.classList.remove('hidden');
             }
-        }
 
-        window.openSystemSettingsOrGuide = function() {
-            lockPointerOverlay.classList.remove('hidden');
-            
-            // Native App Intent Trigger for Android App / WebView Settings
             try {
-                if (window.Android && window.Android.openNotificationSettings) {
-                    window.Android.openNotificationSettings();
-                } else {
-                    // Flash Pointer to upper address bar
-                    setTimeout(() => {
-                        lockPointerOverlay.classList.add('hidden');
-                    }, 6000);
-                }
-            } catch (e) {}
-        };
-
-        window.requestNotifPermissionGate = function() {
-            Notification.requestPermission().then(permission => {
+                const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    notifGateModal.classList.add('hidden');
-                    completeLoginFlow(pendingPhone);
-                } else if (permission === 'denied') {
-                    notifGateModal.classList.add('hidden');
-                    unblockGuideModal.classList.remove('hidden');
-                }
-            });
-        };
+                    blockedBanner.classList.add('hidden');
+                    
+                    if (messaging) {
+                        const swRegistration = await registerServiceWorker();
+                        const tokenOptions = { vapidKey: VAPID_KEY };
+                        if (swRegistration) {
+                            tokenOptions.serviceWorkerRegistration = swRegistration;
+                        }
 
-        // STEP 3: LOGIN & FIRESTORE SYNC
-        async function completeLoginFlow(phone) {
-            phoneSubmitBtn.disabled = true;
-            phoneBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> साइन-इन हो रहा है...`;
+                        const currentToken = await getToken(messaging, tokenOptions).catch(e => {
+                            console.error("FCM Token Generation Error:", e);
+                            return null;
+                        });
 
-            try {
-                const userDocRef = doc(db, "users", phone);
-                const docSnap = await getDoc(userDocRef);
-                const statsRef = doc(db, "metadata", "stats");
-
-                let userData = { phone: phone, name: "" };
-
-                if (docSnap.exists()) {
-                    userData.name = docSnap.data().name || "";
-                    await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                        if (currentToken && phone) {
+                            const userDocRef = doc(db, "users", phone);
+                            await setDoc(userDocRef, { 
+                                fcmToken: currentToken, 
+                                lastTokenUpdate: serverTimestamp() 
+                            }, { merge: true });
+                            console.log("SUCCESS: fcmToken saved to Firestore:", currentToken);
+                        }
+                    }
                 } else {
-                    await setDoc(userDocRef, {
-                        phone: phone,
-                        name: "",
-                        fcmToken: null,
-                        createdAt: serverTimestamp(),
-                        lastLogin: serverTimestamp()
-                    });
-
-                    await setDoc(statsRef, {
-                        totalUsers: increment(1),
-                        notifOn: increment(1),
-                        notifOff: increment(0)
-                    }, { merge: true });
+                    blockedBanner.classList.remove('hidden');
                 }
-
-                localStorage.setItem('notification_user', JSON.stringify(userData));
-                await showChatScreen(userData);
-
             } catch (err) {
-                alert("लॉगिन त्रुटि: " + err.message);
-            } finally {
-                phoneSubmitBtn.disabled = false;
-                phoneBtnText.innerText = "आगे बढ़ें";
+                console.error("FCM Token Catch Error:", err);
             }
         }
 
-        // STEP 4: PROMPT ADD/EDIT NAME
-        window.promptAddName = async function() {
-            const enteredName = prompt("अपना पूरा नाम दर्ज करें:");
-            if (enteredName && enteredName.trim() !== '') {
-                const cleanName = enteredName.trim();
-                currentUser.name = cleanName;
-                localStorage.setItem('notification_user', JSON.stringify(currentUser));
-
-                await updateDoc(doc(db, "users", currentUser.phone), { name: cleanName });
-
-                updateUserHeaderUI();
+        window.requestNotificationPermission = function() {
+            if (currentUser && currentUser.phone) {
+                fetchAndSaveFCMToken(currentUser.phone);
+            } else if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') blockedBanner.classList.add('hidden');
+                    else blockedBanner.classList.remove('hidden');
+                });
             }
         };
-
-        function updateUserHeaderUI() {
-            if (currentUser.name && currentUser.name.trim() !== '') {
-                userDisplayName.innerText = currentUser.name;
-                addNameBtn.classList.add('hidden');
-            } else {
-                userDisplayName.innerText = currentUser.phone;
-                addNameBtn.classList.remove('hidden');
-            }
-        }
-
-        // AUTO SESSION RESTORE
-        const savedUser = JSON.parse(localStorage.getItem('notification_user'));
-        if (savedUser && savedUser.phone) { 
-            pendingPhone = savedUser.phone;
-            checkNotificationAndProceed(); 
-        }
-
-        async function showChatScreen(user) {
-            currentUser = user;
-            isAdminUser = await checkIfAdmin(user.phone);
-
-            regScreen.classList.add('hidden');
-            chatScreen.classList.remove('hidden');
-            chatScreen.classList.add('flex');
-
-            updateUserHeaderUI();
-
-            if (isAdminUser) {
-                adminInputBox.classList.remove('hidden');
-                adminInputBox.classList.add('flex');
-                userFooter.classList.add('hidden');
-                adminBadge.classList.remove('hidden');
-            }
-
-            fetchAndSaveFCMToken(user.phone);
-            syncMessagesWhatsAppStyle();
-        }
-
-        async function fetchAndSaveFCMToken(phone) {
-            if (!("Notification" in window) || Notification.permission !== 'granted' || !messaging) return;
-
-            try {
-                const swRegistration = await registerServiceWorker();
-                const tokenOptions = { vapidKey: VAPID_KEY };
-                if (swRegistration) tokenOptions.serviceWorkerRegistration = swRegistration;
-
-                const currentToken = await getToken(messaging, tokenOptions).catch(e => null);
-
-                if (currentToken && phone) {
-                    await setDoc(doc(db, "users", phone), { 
-                        fcmToken: currentToken, 
-                        lastTokenUpdate: serverTimestamp() 
-                    }, { merge: true });
-                }
-            } catch (err) {}
-        }
-
-        async function checkIfAdmin(phone) {
-            try {
-                const adminSnap = await getDoc(doc(db, "admins", phone));
-                return adminSnap.exists();
-            } catch (e) { return false; }
-        }
 
         window.switchTab = function(tabName) {
             activeTab = tabName;
@@ -560,7 +406,9 @@
         window.openMediaModal = function(url, type, name) {
             const modal = document.getElementById('media-modal');
             const modalBody = document.getElementById('modal-body');
-            document.getElementById('modal-title').innerText = name || "मीडिया फ़ाइल";
+            const modalTitle = document.getElementById('modal-title');
+
+            modalTitle.innerText = name || "मीडिया फ़ाइल";
             modalBody.innerHTML = '';
 
             if (type === 'image') {
@@ -597,6 +445,113 @@
             }
         };
 
+        userPhoneInput.addEventListener('input', () => {
+            if (pendingNewUserCheck) {
+                pendingNewUserCheck = false;
+                newUserFields.classList.add('hidden');
+                userNameInput.required = false;
+                submitBtnText.innerText = "आगे बढ़ें / लॉगिन करें";
+            }
+        });
+
+        async function checkIfAdmin(phone) {
+            try {
+                const adminDocRef = doc(db, "admins", phone);
+                const adminSnap = await getDoc(adminDocRef);
+                return adminSnap.exists();
+            } catch (e) {
+                console.error("Admin verification error", e);
+                return false;
+            }
+        }
+
+        // LOGIN & SIGNUP LOGIC
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phone = userPhoneInput.value.trim();
+
+            if (phone.length !== 10) { alert('कृपया सही 10 अंकों का नंबर लिखें!'); return; }
+
+            submitBtn.disabled = true;
+
+            try {
+                if (!pendingNewUserCheck) {
+                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> नंबर जांच रहे हैं...`;
+
+                    const userDocRef = doc(db, "users", phone);
+                    const docSnap = await getDoc(userDocRef);
+
+                    if (docSnap.exists()) {
+                        const userData = {
+                            name: docSnap.data().name || "यूज़र",
+                            phone: phone,
+                            gender: docSnap.data().gender || "Unspecified",
+                            lastLogin: new Date().toISOString()
+                        };
+
+                        await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                        localStorage.setItem('notification_user', JSON.stringify(userData));
+                        await showChatScreen(userData);
+                    } else {
+                        pendingNewUserCheck = true;
+                        newUserFields.classList.remove('hidden');
+                        userNameInput.required = true;
+                        submitBtnText.innerText = "अकाउंट बनाएँ और साइन इन करें";
+                    }
+                } else {
+                    const name = userNameInput.value.trim();
+                    const gender = userGenderInput.value;
+
+                    if (!name) { alert('कृपया अपना पूरा नाम लिखें!'); submitBtn.disabled = false; return; }
+
+                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
+
+                    const userDocRef = doc(db, "users", phone);
+                    let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
+
+                    await setDoc(userDocRef, {
+                        name,
+                        phone,
+                        gender,
+                        createdAt: serverTimestamp(),
+                        lastLogin: serverTimestamp()
+                    });
+
+                    localStorage.setItem('notification_user', JSON.stringify(userData));
+                    await showChatScreen(userData);
+                }
+            } catch (error) {
+                alert("लॉगिन/रजिस्ट्रेशन में त्रुटि: " + error.message);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        const savedUser = JSON.parse(localStorage.getItem('notification_user'));
+        if (savedUser && savedUser.phone) { 
+            showChatScreen(savedUser); 
+        }
+
+        async function showChatScreen(user) {
+            currentUser = user;
+            isAdminUser = await checkIfAdmin(user.phone);
+
+            regScreen.classList.add('hidden');
+            chatScreen.classList.remove('hidden');
+            chatScreen.classList.add('flex');
+            welcomeUserText.innerText = `${user.name}`;
+
+            if (isAdminUser) {
+                adminInputBox.classList.remove('hidden');
+                adminInputBox.classList.add('flex');
+                userFooter.classList.add('hidden');
+                adminBadge.classList.remove('hidden');
+            }
+
+            fetchAndSaveFCMToken(user.phone);
+            syncMessagesWhatsAppStyle();
+        }
+
         function syncMessagesWhatsAppStyle() {
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
@@ -605,16 +560,28 @@
                     const spinner = document.getElementById('loading-spinner');
                     if (spinner) spinner.remove();
                     renderFilteredNotifications();
-                } catch(e) {}
+                } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            let q = isAdminUser 
-                ? query(collection(db, "notifications"), orderBy("timestamp", "desc"), limit(INITIAL_ADMIN_LOAD_LIMIT))
-                : query(collection(db, "notifications"), orderBy("timestamp", "desc"), limit(1));
+            let q;
+            if (isAdminUser) {
+                q = query(
+                    collection(db, "notifications"), 
+                    orderBy("timestamp", "desc"), 
+                    limit(INITIAL_ADMIN_LOAD_LIMIT)
+                );
+            } else {
+                q = query(
+                    collection(db, "notifications"), 
+                    orderBy("timestamp", "desc"), 
+                    limit(1)
+                );
+            }
 
             onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
                 if (spinner) spinner.remove();
+
                 if (snapshot.empty) return;
 
                 snapshot.forEach((docSnap) => {
@@ -633,8 +600,11 @@
                     };
 
                     const index = allNotificationsData.findIndex(item => item.id === fetchedDoc.id);
-                    if (index !== -1) allNotificationsData[index] = fetchedDoc;
-                    else allNotificationsData.push(fetchedDoc);
+                    if (index !== -1) {
+                        allNotificationsData[index] = fetchedDoc;
+                    } else {
+                        allNotificationsData.push(fetchedDoc);
+                    }
                 });
 
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
@@ -652,10 +622,18 @@
             if (!currentUser) return;
             const userPhone = currentUser.phone;
             const notificationDoc = allNotificationsData.find(item => item.id === docId);
+
             if (!notificationDoc) return;
 
             if (!notificationDoc.likes) notificationDoc.likes = [];
             const isLiked = notificationDoc.likes.includes(userPhone);
+
+            if (!isLiked && notificationDoc.likes.length >= MAX_LIKES_LIMIT) {
+                notificationDoc.likes.push(userPhone);
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                renderFilteredNotifications();
+                return;
+            }
 
             const docRef = doc(db, "notifications", docId);
             if (isLiked) {
@@ -679,7 +657,9 @@
                 if (!notificationDoc.seenBy) notificationDoc.seenBy = [];
                 notificationDoc.seenBy.push(userPhone);
 
-                await updateDoc(doc(db, "notifications", docId), { seenBy: arrayUnion(userPhone) });
+                const docRef = doc(db, "notifications", docId);
+                await updateDoc(docRef, { seenBy: arrayUnion(userPhone) });
+
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             }
@@ -708,8 +688,13 @@
 
             if (!newMessage && !newTitle) { alert("शीर्षक या सन्देश भरें!"); return; }
 
+            const saveBtn = document.getElementById('save-edit-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i> सेव हो रहा है...`;
+
             try {
-                await updateDoc(doc(db, "notifications", activeEditingDocId), {
+                const docRef = doc(db, "notifications", activeEditingDocId);
+                await updateDoc(docRef, {
                     title: newTitle,
                     message: newMessage
                 });
@@ -723,7 +708,13 @@
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
                 closeEditModal();
-            } catch (err) { alert("त्रुटि: " + err.message); }
+
+            } catch (err) {
+                alert("सुधार करने में त्रुटि: " + err.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "सेव करें";
+            }
         });
 
         function getFormattedDateLabel(timestampMs) {
@@ -732,25 +723,38 @@
             const yesterday = new Date();
             yesterday.setDate(today.getDate() - 1);
 
-            if (msgDate.toDateString() === today.toDateString()) return "आज (Today)";
-            if (msgDate.toDateString() === yesterday.toDateString()) return "कल (Yesterday)";
-            return msgDate.toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            if (msgDate.toDateString() === today.toDateString()) {
+                return "आज (Today)";
+            } else if (msgDate.toDateString() === yesterday.toDateString()) {
+                return "कल (Yesterday)";
+            } else {
+                return msgDate.toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
         }
 
         function renderFilteredNotifications() {
             messagesContainer.innerHTML = '';
+
             let filtered = [...allNotificationsData];
 
-            if (activeTab === 'recent') filtered = filtered.slice(-2);
-            else if (activeTab === 'media') filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
+            if (activeTab === 'recent') {
+                filtered = filtered.slice(-2);
+            } else if (activeTab === 'media') {
+                filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
+            }
 
             if (isAdminUser) {
-                if (filtered.length > adminDisplayLimit) {
+                const totalAvailable = filtered.length;
+                if (totalAvailable > adminDisplayLimit) {
                     seeMoreContainer.classList.remove('hidden');
                     filtered = filtered.slice(-adminDisplayLimit);
-                } else seeMoreContainer.classList.add('hidden');
+                } else {
+                    seeMoreContainer.classList.add('hidden');
+                }
                 messagesContainer.appendChild(seeMoreContainer);
-            } else seeMoreContainer.classList.add('hidden');
+            } else {
+                seeMoreContainer.classList.add('hidden');
+            }
 
             if (filtered.length === 0) {
                 messagesContainer.innerHTML += `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-folder-open text-3xl mb-2"></i><br>यहाँ कोई फ़ाइल या संदेश उपलब्ध नहीं है।</div>`;
@@ -776,24 +780,56 @@
                 }
 
                 const likesList = data.likes || [];
+                const likeCount = likesList.length;
                 const isLikedByMe = currentUser && likesList.includes(currentUser.phone);
+
                 const seenList = data.seenBy || [];
+                const seenCount = seenList.length;
                 const isSeenByMe = currentUser && seenList.includes(currentUser.phone);
 
-                let tickHTML = `<i class="fas fa-check tick-gray text-[10px]"></i>`;
-                if (seenList.length > 0) {
-                    tickHTML = isSeenByMe 
-                        ? `<i class="fas fa-check-double tick-blue text-[11px]"></i>`
-                        : `<i class="fas fa-check-double tick-gray text-[11px]"></i>`;
+                let tickHTML = `<i class="fas fa-check tick-gray text-[10px]" title="भेजा गया"></i>`;
+                if (seenCount > 0) {
+                    if (isSeenByMe) {
+                        tickHTML = `<i class="fas fa-check-double tick-blue text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
+                    } else {
+                        tickHTML = `<i class="fas fa-check-double tick-gray text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
+                    }
                 }
 
                 let mediaHTML = '';
                 if (data.mediaType === 'image' && data.mediaUrl) {
-                    mediaHTML = `<div class="relative group my-2 cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'image', '${data.fileName || 'Image'}')"><img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl border border-slate-200"></div>`;
+                    mediaHTML = `
+                        <div class="relative group my-2 cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'image', '${data.fileName || 'Image'}')">
+                            <img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl border border-slate-200" oncontextmenu="return false;">
+                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-xl text-white font-bold text-xs">
+                                <i class="fas fa-search-plus mr-1"></i> पूरा देखें
+                            </div>
+                        </div>`;
                 } else if (data.mediaType === 'video' && data.mediaUrl) {
-                    mediaHTML = `<div class="my-2"><video controls controlsList="nodownload" src="${data.mediaUrl}" class="w-full max-h-64 rounded-xl border border-slate-200"></video></div>`;
+                    mediaHTML = `
+                        <div class="my-2">
+                            <video controls controlsList="nodownload" src="${data.mediaUrl}" class="w-full max-h-64 rounded-xl border border-slate-200" oncontextmenu="return false;"></video>
+                            <button onclick="openMediaModal('${data.mediaUrl}', 'video', '${data.fileName || 'Video'}')" class="mt-1 text-[11px] text-teal-700 font-bold flex items-center">
+                                <i class="fas fa-expand mr-1"></i> फ़ुल स्क्रीन में देखें
+                            </button>
+                        </div>`;
                 } else if (data.mediaType === 'pdf' && data.mediaUrl) {
-                    mediaHTML = `<div class="flex items-center justify-between p-3 my-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-bold cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'pdf', '${data.fileName || 'PDF'}')"><div class="flex items-center truncate mr-2"><i class="fas fa-file-pdf text-2xl text-emerald-600 mr-2"></i><span class="truncate">${data.fileName || 'PDF Document'}</span></div></div>`;
+                    mediaHTML = `
+                        <div class="flex items-center justify-between p-3 my-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-bold cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'pdf', '${data.fileName || 'PDF'}')">
+                            <div class="flex items-center truncate mr-2">
+                                <i class="fas fa-file-pdf text-2xl text-emerald-600 mr-2"></i>
+                                <span class="truncate">${data.fileName || 'PDF Document'}</span>
+                            </div>
+                            <span class="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-1 rounded">देखें</span>
+                        </div>`;
+                } else if (data.mediaType === 'file' && data.mediaUrl) {
+                    mediaHTML = `
+                        <div class="flex items-center justify-between p-3 my-2 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-800 font-bold">
+                            <div class="flex items-center truncate mr-2">
+                                <i class="fas fa-file-alt text-2xl text-blue-600 mr-2"></i>
+                                <span class="truncate">${data.fileName || 'Document File'}</span>
+                            </div>
+                        </div>`;
                 }
 
                 messagesContainer.innerHTML += `
@@ -803,8 +839,8 @@
                             <div class="flex items-center space-x-2">
                                 <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
                                 ${isAdminUser ? `
-                                    <button onclick="openEditModal('${docId}')" class="text-blue-500 hover:text-blue-700 text-xs ml-1"><i class="fas fa-edit"></i></button>
-                                    <button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1"><i class="fas fa-trash-alt"></i></button>
+                                    <button onclick="openEditModal('${docId}')" class="text-blue-500 hover:text-blue-700 text-xs ml-1" title="मैसेज सुधारें"><i class="fas fa-edit"></i></button>
+                                    <button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1" title="डिलीट करें"><i class="fas fa-trash-alt"></i></button>
                                 ` : ''}
                             </div>
                         </div>
@@ -814,15 +850,19 @@
                         
                         ${mediaHTML}
 
+                        <!-- Action Bar -->
                         <div class="mt-2.5 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
                             <div class="flex items-center space-x-3">
-                                <button onclick="toggleLike('${docId}')" class="flex items-center space-x-1 ${isLikedByMe ? 'like-btn-active' : 'text-slate-500'}">
+                                <!-- Like Button -->
+                                <button onclick="toggleLike('${docId}')" class="flex items-center space-x-1 ${isLikedByMe ? 'like-btn-active' : 'text-slate-500 hover:text-rose-600'} transition">
                                     <i class="${isLikedByMe ? 'fas' : 'far'} fa-heart text-sm"></i>
-                                    <span class="text-[11px]">${likesList.length}</span>
+                                    <span class="text-[11px]">${likeCount}</span>
                                 </button>
-                                <div class="flex items-center space-x-1 text-slate-400 text-[10px]">
+
+                                <!-- Seen Info Badge -->
+                                <div class="flex items-center space-x-1 text-slate-400 text-[10px]" title="${seenCount} यूज़र्स द्वारा देखा गया">
                                     <i class="fas fa-eye text-xs"></i>
-                                    <span>${seenList.length}</span>
+                                    <span>${seenCount}</span>
                                 </div>
                             </div>
 
@@ -856,12 +896,14 @@
                 const title = document.getElementById('admin-msg-title').value.trim();
                 const message = document.getElementById('admin-msg-body').value.trim();
 
-                if (!message && !selectedFile) { alert("सन्देश लिखें या फ़ाइल चुनें!"); return; }
+                if (!message && !selectedFile) { alert("कृपया सन्देश लिखें या गैलरी से फ़ाइल चुनें!"); return; }
 
                 sendBtn.disabled = true;
                 uploadProgress.classList.remove('hidden');
 
-                let mediaUrl = null, mediaType = 'none', fileName = '';
+                let mediaUrl = null;
+                let mediaType = 'none';
+                let fileName = '';
 
                 try {
                     if (selectedFile) {
@@ -877,7 +919,7 @@
                     }
 
                     await addDoc(collection(db, "notifications"), {
-                        adminName: currentUser ? (currentUser.name || currentUser.phone) : "Admin",
+                        adminName: currentUser ? currentUser.name : "Admin",
                         title: title || "महत्वपूर्ण सूचना",
                         message: message,
                         mediaUrl: mediaUrl,
@@ -891,8 +933,10 @@
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
                     clearFileBtn.click();
-                } catch (err) { alert("एरर: " + err.message); } 
-                finally {
+
+                } catch (err) {
+                    alert("अपलोड एरर: " + err.message);
+                } finally {
                     sendBtn.disabled = false;
                     uploadProgress.classList.add('hidden');
                 }
