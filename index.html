@@ -30,13 +30,13 @@
     <!-- App Container -->
     <div class="w-full max-w-md bg-white app-height sm:h-[720px] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-0 sm:border sm:border-slate-700/50">
 
-        <!-- Notification Blocked Banner (केवल तभी दिखेगा जब परमिशन ब्लॉक होगी) -->
+        <!-- Notification Blocked Banner -->
         <div id="blocked-banner" class="hidden bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md z-30">
             <div class="flex items-center space-x-2">
                 <i class="fas fa-bell-slash text-base"></i>
-                <span>नोटिफिकेशन बंद हैं! अपडेट्स पाने के लिए ऑन करें।</span>
+                <span id="banner-text">नोटिफिकेशन बंद हैं! अपडेट्स पाने के लिए ऑन करें।</span>
             </div>
-            <button onclick="requestNotificationPermission()" class="bg-slate-900 px-2 py-1 rounded text-[10px] font-bold">Turn On</button>
+            <button id="notif-toggle-btn" onclick="requestNotificationPermission()" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold transition">Turn On</button>
         </div>
 
         <!-- 1. Smart Registration / Login Screen -->
@@ -288,6 +288,21 @@
         const adminBadge = document.getElementById('admin-badge');
         const seeMoreContainer = document.getElementById('see-more-container');
 
+        // 🟢 SERVICE WORKER REGISTRATION FUNCTION
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                    console.log('Service Worker Registered Successfully:', registration);
+                    return registration;
+                } catch (err) {
+                    console.error('Service Worker Registration Failed:', err);
+                    return null;
+                }
+            }
+            return null;
+        }
+
         function formatMessageText(text) {
             if (!text) return '';
             const urlPattern = /(https?:\/\/[^\s]+)/g;
@@ -318,49 +333,58 @@
             filePreviewBar.classList.add('hidden');
         });
 
-        // 🔔 FETCH REAL FCM TOKEN & SMART BANNER MANAGEMENT
+        // 🔔 REAL FCM TOKEN GENERATION & FIRESTORE SAVE LOGIC
         async function fetchAndSaveFCMToken(phone) {
-            if ("Notification" in window) {
-                // परमिशन स्टेटस चेक करें
-                if (Notification.permission === 'granted') {
-                    blockedBanner.classList.add('hidden'); // ऑन है तो बैनर गायब
-                } else {
-                    blockedBanner.classList.remove('hidden'); // बंद है तो बैनर दिखाओ
-                }
+            if (!("Notification" in window)) return;
 
-                try {
-                    const permission = await Notification.requestPermission();
-                    if (permission === 'granted') {
-                        blockedBanner.classList.add('hidden');
-                        if (messaging) {
-                            const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY }).catch(e => null);
-                            if (currentToken) {
-                                const userDocRef = doc(db, "users", phone);
-                                await updateDoc(userDocRef, { fcmToken: currentToken, lastTokenUpdate: serverTimestamp() }).catch(async () => {
-                                    await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
-                                });
-                                console.log("fcmToken saved:", currentToken);
-                            }
+            if (Notification.permission === 'granted') {
+                blockedBanner.classList.add('hidden');
+            } else {
+                blockedBanner.classList.remove('hidden');
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    blockedBanner.classList.add('hidden');
+                    
+                    if (messaging) {
+                        const swRegistration = await registerServiceWorker();
+                        const tokenOptions = { vapidKey: VAPID_KEY };
+                        if (swRegistration) {
+                            tokenOptions.serviceWorkerRegistration = swRegistration;
                         }
-                    } else {
-                        blockedBanner.classList.remove('hidden');
+
+                        const currentToken = await getToken(messaging, tokenOptions).catch(e => {
+                            console.error("FCM Token Generation Error:", e);
+                            return null;
+                        });
+
+                        if (currentToken && phone) {
+                            const userDocRef = doc(db, "users", phone);
+                            await setDoc(userDocRef, { 
+                                fcmToken: currentToken, 
+                                lastTokenUpdate: serverTimestamp() 
+                            }, { merge: true });
+                            console.log("SUCCESS: fcmToken saved to Firestore:", currentToken);
+                        }
                     }
-                } catch (err) {
-                    console.error("FCM Token Error:", err);
+                } else {
+                    blockedBanner.classList.remove('hidden');
                 }
+            } catch (err) {
+                console.error("FCM Token Catch Error:", err);
             }
         }
 
         window.requestNotificationPermission = function() {
             if (currentUser && currentUser.phone) {
                 fetchAndSaveFCMToken(currentUser.phone);
-            } else {
-                if ("Notification" in window) {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === 'granted') blockedBanner.classList.add('hidden');
-                        else blockedBanner.classList.remove('hidden');
-                    });
-                }
+            } else if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') blockedBanner.classList.add('hidden');
+                    else blockedBanner.classList.remove('hidden');
+                });
             }
         };
 
@@ -441,7 +465,7 @@
             }
         }
 
-        // LOGIN & SIGNUP (अकाउंट बनते ही परमिशन माँगेगा)
+        // LOGIN & SIGNUP LOGIC
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
@@ -524,12 +548,10 @@
                 adminBadge.classList.remove('hidden');
             }
 
-            // लॉगिन या अकाउंट बनते ही परमिशन प्रम्प्ट ट्रिगर होगा
             fetchAndSaveFCMToken(user.phone);
             syncMessagesWhatsAppStyle();
         }
 
-        // HYBRID SYNC: LOCALSTORAGE ACCUMULATION + FIREBASE FETCH
         function syncMessagesWhatsAppStyle() {
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
