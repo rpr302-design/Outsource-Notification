@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Outsource Dynamic Media Hub - Zero Read Optimized</title>
+    <title>Outsource Dynamic Media Hub - Admin Supercharged</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -28,7 +28,7 @@
 </head>
 <body class="bg-slate-900 text-slate-800 app-height flex flex-col justify-center items-center font-sans overflow-hidden">
 
-    <!-- App Container (Full Screen on Mobile) -->
+    <!-- App Container -->
     <div class="w-full max-w-md bg-white app-height sm:h-[720px] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-0 sm:border sm:border-slate-700/50">
 
         <!-- Notification Blocked Banner -->
@@ -102,6 +102,7 @@
                         <h3 class="font-bold text-sm text-white leading-tight">MP Outsource Media Hub</h3>
                         <div class="flex items-center space-x-2 text-[11px] text-teal-200">
                             <span id="welcome-user">यूज़र</span>
+                            <span id="admin-badge" class="hidden bg-amber-500 text-slate-900 font-extrabold px-1.5 py-0.2 rounded text-[9px]">ADMIN</span>
                         </div>
                     </div>
                 </div>
@@ -125,6 +126,14 @@
 
             <!-- Messages Stream Container -->
             <div id="messages-container" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+                
+                <!-- See More Load Button -->
+                <div id="see-more-container" class="hidden text-center my-2">
+                    <button id="see-more-btn" onclick="loadMoreMessages()" class="bg-white/80 hover:bg-white text-teal-800 text-xs font-bold px-4 py-1.5 rounded-full shadow border border-slate-300 transition">
+                        <i class="fas fa-history mr-1"></i> और पुराने मैसेज देखें (See More)
+                    </button>
+                </div>
+
                 <div id="loading-spinner" class="text-center py-10 text-slate-500">
                     <i class="fas fa-circle-notch fa-spin text-2xl text-teal-600"></i>
                     <p class="text-xs mt-2">सूचनाएं लोड हो रही हैं...</p>
@@ -236,16 +245,18 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        const ADMIN_PHONE_NUMBER = "9993332211"; 
         const MAX_LIKES_LIMIT = 19500; 
+        const INITIAL_LOAD_LIMIT = 50; // 🛑 50 मैसेज लिमिट
         const CUSTOM_DELIVERED_LOGO = "https://images.app.goo.gl/346sRThv3e3G69188"; 
 
         let currentUser = null;
+        let isAdminUser = false;
         let selectedFile = null;
         let allNotificationsData = [];
         let activeTab = 'recent';
         let pendingNewUserCheck = false;
         let activeEditingDocId = null;
+        let displayLimit = INITIAL_LOAD_LIMIT;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -269,6 +280,8 @@
         const blockedBanner = document.getElementById('blocked-banner');
         const attachmentMenu = document.getElementById('attachment-menu');
         const filePreviewBar = document.getElementById('file-preview-bar');
+        const adminBadge = document.getElementById('admin-badge');
+        const seeMoreContainer = document.getElementById('see-more-container');
 
         function formatMessageText(text) {
             if (!text) return '';
@@ -374,6 +387,18 @@
             }
         });
 
+        // 🟢 FIREBASE 'admins' COLLECTION CHECK (Dynamic Multi-Admin Power)
+        async function checkIfAdmin(phone) {
+            try {
+                const adminDocRef = doc(db, "admins", phone);
+                const adminSnap = await getDoc(adminDocRef);
+                return adminSnap.exists();
+            } catch (e) {
+                console.error("Admin verification error", e);
+                return false;
+            }
+        }
+
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
@@ -399,7 +424,7 @@
 
                         await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
                         localStorage.setItem('notification_user', JSON.stringify(userData));
-                        showChatScreen(userData);
+                        await showChatScreen(userData);
                     } else {
                         pendingNewUserCheck = true;
                         newUserFields.classList.remove('hidden');
@@ -426,7 +451,7 @@
                     });
 
                     localStorage.setItem('notification_user', JSON.stringify(userData));
-                    showChatScreen(userData);
+                    await showChatScreen(userData);
                 }
             } catch (error) {
                 alert("लॉगिन/रजिस्ट्रेशन में त्रुटि: " + error.message);
@@ -438,17 +463,20 @@
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser) { showChatScreen(savedUser); }
 
-        function showChatScreen(user) {
+        async function showChatScreen(user) {
             currentUser = user;
+            isAdminUser = await checkIfAdmin(user.phone);
+
             regScreen.classList.add('hidden');
             chatScreen.classList.remove('hidden');
             chatScreen.classList.add('flex');
             welcomeUserText.innerText = `${user.name}`;
 
-            if (user.phone === ADMIN_PHONE_NUMBER) {
+            if (isAdminUser) {
                 adminInputBox.classList.remove('hidden');
                 adminInputBox.classList.add('flex');
                 userFooter.classList.add('hidden');
+                adminBadge.classList.remove('hidden');
             }
 
             requestNotificationPermission();
@@ -489,7 +517,7 @@
                 q = query(
                     collection(db, "notifications"), 
                     orderBy("timestamp", "desc"), 
-                    limit(1)
+                    limit(INITIAL_LOAD_LIMIT)
                 );
             }
 
@@ -523,11 +551,16 @@
                 });
 
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
-
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
         }
+
+        // SEE MORE LOAD FUNCTION
+        window.loadMoreMessages = function() {
+            displayLimit += 50;
+            renderFilteredNotifications();
+        };
 
         // LIKE TOGGLE (19,500 LIKES CAP)
         window.toggleLike = async function(docId) {
@@ -631,26 +664,67 @@
             }
         });
 
+        // 🟢 DATE FORMATTER & GROUPING HELPER
+        function getFormattedDateLabel(timestampMs) {
+            const msgDate = new Date(timestampMs);
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+
+            if (msgDate.toDateString() === today.toDateString()) {
+                return "आज (Today)";
+            } else if (msgDate.toDateString() === yesterday.toDateString()) {
+                return "कल (Yesterday)";
+            } else {
+                return msgDate.toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+        }
+
         function renderFilteredNotifications() {
             messagesContainer.innerHTML = '';
 
-            let dataToDisplay = [...allNotificationsData];
+            let filtered = [...allNotificationsData];
 
             if (activeTab === 'recent') {
-                dataToDisplay = dataToDisplay.slice(-2);
+                filtered = filtered.slice(-2);
             } else if (activeTab === 'media') {
-                dataToDisplay = dataToDisplay.filter(item => item.mediaUrl && item.mediaType !== 'none');
+                filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
             }
 
-            if (dataToDisplay.length === 0) {
-                messagesContainer.innerHTML = `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-folder-open text-3xl mb-2"></i><br>यहाँ कोई फ़ाइल या संदेश उपलब्ध नहीं है।</div>`;
+            // 🛑 LAST 50 / DISPLAY LIMIT LOGIC WITH SEE MORE
+            const totalAvailable = filtered.length;
+            if (totalAvailable > displayLimit) {
+                seeMoreContainer.classList.remove('hidden');
+                filtered = filtered.slice(-displayLimit);
+            } else {
+                seeMoreContainer.classList.add('hidden');
+            }
+
+            messagesContainer.appendChild(seeMoreContainer);
+
+            if (filtered.length === 0) {
+                messagesContainer.innerHTML += `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-folder-open text-3xl mb-2"></i><br>यहाँ कोई फ़ाइल या संदेश उपलब्ध नहीं है।</div>`;
                 return;
             }
 
-            dataToDisplay.forEach((data) => {
+            let lastRenderedDate = '';
+
+            filtered.forEach((data) => {
                 const docId = data.id;
+                const dateLabel = getFormattedDateLabel(data.timestampMs);
                 const msgTime = data.timestampMs ? new Date(data.timestampMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
-                const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
+
+                // 📅 DATE SEPARATOR HEADER
+                if (dateLabel !== lastRenderedDate) {
+                    lastRenderedDate = dateLabel;
+                    messagesContainer.innerHTML += `
+                        <div class="flex justify-center my-3">
+                            <span class="bg-slate-200/80 text-slate-600 font-bold text-[10px] px-3 py-1 rounded-full shadow-sm border border-slate-300/50">
+                                📅 ${dateLabel}
+                            </span>
+                        </div>
+                    `;
+                }
 
                 const likesList = data.likes || [];
                 const likeCount = likesList.length;
@@ -703,7 +777,7 @@
                             <span>📢 ${data.adminName || 'Admin Notification'}</span>
                             <div class="flex items-center space-x-2">
                                 <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
-                                ${isAdmin ? `
+                                ${isAdminUser ? `
                                     <button onclick="openEditModal('${docId}')" class="text-blue-500 hover:text-blue-700 text-xs ml-1" title="मैसेज सुधारें"><i class="fas fa-edit"></i></button>
                                     <button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1" title="डिलीट करें"><i class="fas fa-trash-alt"></i></button>
                                 ` : ''}
