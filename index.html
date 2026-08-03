@@ -215,7 +215,7 @@ html_code = '''<!DOCTYPE html>
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, 
-            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove 
+            query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, arrayUnion, arrayRemove 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
@@ -233,7 +233,8 @@ html_code = '''<!DOCTYPE html>
         const storage = getStorage(app);
 
         const ADMIN_PHONE_NUMBER = "9993332211"; 
-        const MAX_LIKES_LIMIT = 19500; // 🛑 19,500 Max Likes Limit
+        const MAX_LIKES_LIMIT = 19500; 
+        const CUSTOM_DELIVERED_LOGO = "https://images.app.goo.gl/346sRThv3e3G69188"; // 🖼️ संदेश पहुँचने का लोगो
 
         let currentUser = null;
         let selectedFile = null;
@@ -450,45 +451,25 @@ html_code = '''<!DOCTYPE html>
             syncMessagesWhatsAppStyle();
         }
 
-        // 🟢 ZERO READ ARCHITECTURE + NEW USER DELTA SYNC
+        // 🟢 FIREBASE STRICT LAST MESSAGE FETCH -> LOCALSTORAGE SAVE
         function syncMessagesWhatsAppStyle() {
+            // Step 1: LocalStorage में जो भी पुराने मैसेज हैं उन्हें लोड करें
             const localCachedData = localStorage.getItem('cached_notifications');
-            let hasCache = false;
-
             if (localCachedData) {
                 try {
                     allNotificationsData = JSON.parse(localCachedData);
-                    if (allNotificationsData.length > 0) hasCache = true;
                     const spinner = document.getElementById('loading-spinner');
                     if (spinner) spinner.remove();
                     renderFilteredNotifications();
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            let lastTimestampMs = 0;
-            if (allNotificationsData.length > 0) {
-                const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
-                if (maxTime > 0) lastTimestampMs = maxTime;
-            }
-
-            let q;
-            if (hasCache && lastTimestampMs > 0) {
-                // पुरानी कैशे मौजूद है -> केवल नये मैसेज ही फेच होंगे (0 Extra Read)
-                const lastDate = new Date(lastTimestampMs);
-                const firestoreTimestamp = Timestamp.fromDate(lastDate);
-                q = query(
-                    collection(db, "notifications"), 
-                    where("timestamp", ">", firestoreTimestamp),
-                    orderBy("timestamp", "desc")
-                );
-            } else {
-                // 🛑 नया यूज़र -> केवल एडमिन का LAST 1 MESSAGE फेच होगा
-                q = query(
-                    collection(db, "notifications"), 
-                    orderBy("timestamp", "desc"), 
-                    limit(1)
-                );
-            }
+            // Step 2: 🛑 प्रत्येक यूजर के लिए Firebase से STRICTLY केवल "LAST MESSAGE" फेच किया जाएगा (limit(1))
+            const q = query(
+                collection(db, "notifications"), 
+                orderBy("timestamp", "desc"), 
+                limit(1)
+            );
 
             onSnapshot(q, (snapshot) => {
                 const spinner = document.getElementById('loading-spinner');
@@ -496,10 +477,9 @@ html_code = '''<!DOCTYPE html>
 
                 if (snapshot.empty) return;
 
-                const newFetchedData = [];
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
-                    newFetchedData.push({
+                    const fetchedDoc = {
                         id: docSnap.id,
                         adminName: data.adminName || 'Admin Notification',
                         title: data.title || '',
@@ -510,25 +490,26 @@ html_code = '''<!DOCTYPE html>
                         likes: data.likes || [],
                         seenBy: data.seenBy || [],
                         timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
-                    });
+                    };
+
+                    // अगर यह लास्ट मैसेज लोकल स्टोरेज डेटा में नहीं है, तो जोड़ो
+                    const index = allNotificationsData.findIndex(item => item.id === fetchedDoc.id);
+                    if (index !== -1) {
+                        allNotificationsData[index] = fetchedDoc; // अपडेट डेटा
+                    } else {
+                        allNotificationsData.push(fetchedDoc); // नया मैसेज जोड़ो
+                    }
                 });
 
-                newFetchedData.reverse();
-
-                const existingMap = new Map();
-                allNotificationsData.forEach(item => existingMap.set(item.id, item));
-                newFetchedData.forEach(item => existingMap.set(item.id, item));
-
-                allNotificationsData = Array.from(existingMap.values());
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
 
-                // LocalStorage में लगातार सेव रहेगा
+                // 💾 LocalStorage में सेव किया जाएगा
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
         }
 
-        // 🟢 LIKE TOGGLE (19,500 LIKES CAP + LOCALSTORAGE SAFEGUARD)
+        // 🟢 LIKE TOGGLE (19,500 LIKES CAP)
         window.toggleLike = async function(docId) {
             if (!currentUser) return;
             const userPhone = currentUser.phone;
@@ -539,7 +520,6 @@ html_code = '''<!DOCTYPE html>
             if (!notificationDoc.likes) notificationDoc.likes = [];
             const isLiked = notificationDoc.likes.includes(userPhone);
 
-            // 🛑 अगर लाइक्स 19500 तक पहुँच चुके हैं तो केवल लोकल स्टोरेज में रहेगा, नो फायरबेस रिक्वेस्ट!
             if (!isLiked && notificationDoc.likes.length >= MAX_LIKES_LIMIT) {
                 notificationDoc.likes.push(userPhone);
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
@@ -547,7 +527,6 @@ html_code = '''<!DOCTYPE html>
                 return;
             }
 
-            // सामान्य केस -> फायरबेस में भी अपग्रेड होगा
             const docRef = doc(db, "notifications", docId);
             if (isLiked) {
                 notificationDoc.likes = notificationDoc.likes.filter(id => id !== userPhone);
@@ -561,7 +540,7 @@ html_code = '''<!DOCTYPE html>
             renderFilteredNotifications();
         };
 
-        // 🟢 MARK SEEN (DOUBLE TICK)
+        // 🟢 MARK SEEN
         async function markAsSeen(docId) {
             if (!currentUser) return;
             const userPhone = currentUser.phone;
@@ -579,7 +558,7 @@ html_code = '''<!DOCTYPE html>
             }
         }
 
-        // 🟢 ADMIN EDIT FUNCTION (Title + Message Fix via Modal)
+        // 🟢 ADMIN EDIT FUNCTION
         window.openEditModal = function(docId) {
             const notificationDoc = allNotificationsData.find(item => item.id === docId);
             if (!notificationDoc) return;
@@ -614,7 +593,6 @@ html_code = '''<!DOCTYPE html>
                     message: newMessage
                 });
 
-                // अपडेट डेटा को तुरंत लोकल स्टोरज और UI में अपडेट करें
                 const localDoc = allNotificationsData.find(item => item.id === activeEditingDocId);
                 if (localDoc) {
                     localDoc.title = newTitle;
@@ -660,16 +638,9 @@ html_code = '''<!DOCTYPE html>
 
                 const seenList = data.seenBy || [];
                 const seenCount = seenList.length;
-                const isSeenByMe = currentUser && seenList.includes(currentUser.phone);
 
-                let tickHTML = `<i class="fas fa-check tick-gray text-[10px]" title="भेजा गया"></i>`;
-                if (seenCount > 0) {
-                    if (isSeenByMe) {
-                        tickHTML = `<i class="fas fa-check-double tick-blue text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
-                    } else {
-                        tickHTML = `<i class="fas fa-check-double tick-gray text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
-                    }
-                }
+                // 🖼️ कस्टम डिलीवरी लोगो (मैसेज पहुँचने पर दिखने वाला लोगो)
+                let customLogoHTML = `<img src="${CUSTOM_DELIVERED_LOGO}" alt="Delivered" class="w-3.5 h-3.5 object-contain inline-block ml-1" title="संदेश पहुँचा">`;
 
                 let mediaHTML = '';
                 if (data.mediaType === 'image' && data.mediaUrl) {
@@ -745,7 +716,7 @@ html_code = '''<!DOCTYPE html>
                                 <button onclick="shareNotification('${data.title || ''}', '${data.message || ''}', '${data.mediaUrl || ''}')" class="text-teal-700 hover:text-teal-900 text-xs font-bold flex items-center bg-teal-50 px-2 py-1 rounded-lg">
                                     <i class="fas fa-share-alt mr-1"></i> शेयर
                                 </button>
-                                <span class="ml-1">${tickHTML}</span>
+                                ${customLogoHTML}
                             </div>
                         </div>
                     </div>
