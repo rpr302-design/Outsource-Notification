@@ -45,7 +45,7 @@
         <form id="admin-auth-form" class="space-y-4">
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1">लॉगिन ID (मोबाइल नंबर)</label>
-                <input type="tel" id="auth-admin-id" pattern="[0-9]{10}" maxlength="10" required placeholder="जैसे: 1234567890" 
+                <input type="tel" id="auth-admin-id" pattern="[0-9]{10}" maxlength="10" required placeholder="जैसे: 8085112773" 
                        class="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-600 focus:outline-none font-mono">
             </div>
             <div>
@@ -62,8 +62,15 @@
     <!-- Main Dashboard Screen -->
     <div id="admin-dashboard" class="hidden max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
 
-        <!-- Metrics Stats Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- Metrics Stats Grid (4 Cards) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shrink-0"><i class="fas fa-users"></i></div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400">कुल जुड़े यूज़र्स</p>
+                    <h3 id="stat-total-users" class="text-2xl font-extrabold text-slate-800">0</h3>
+                </div>
+            </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
                 <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl shrink-0"><i class="fas fa-paper-plane"></i></div>
                 <div>
@@ -210,6 +217,7 @@
         let activeAdminPhone = null;
         let cachedAdmins = [];
         let cachedNotifications = [];
+        let totalUsersCount = 0;
 
         const authForm = document.getElementById('admin-auth-form');
         const loginScreen = document.getElementById('admin-login-screen');
@@ -234,7 +242,7 @@
 
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                const validPass = data.password || data.phone; // Fallback to phone if pass not set
+                const validPass = data.password || data.phone;
 
                 if (password === validPass) {
                     activeAdminPhone = phone;
@@ -262,6 +270,13 @@
         };
 
         function loadDashboardData() {
+            // 🟢 REALTIME USERS COUNT SYNC
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                totalUsersCount = snapshot.size;
+                document.getElementById('stat-total-users').innerText = totalUsersCount;
+            });
+
+            // REALTIME ADMINS SYNC
             onSnapshot(collection(db, "admins"), (snapshot) => {
                 cachedAdmins = [];
                 snapshot.forEach(docSnap => {
@@ -270,6 +285,7 @@
                 renderAdminsTable();
             });
 
+            // REALTIME NOTIFICATIONS SYNC
             const q = query(collection(db, "notifications"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
                 cachedNotifications = [];
