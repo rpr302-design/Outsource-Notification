@@ -62,7 +62,7 @@
     <!-- Main Dashboard Screen -->
     <div id="admin-dashboard" class="hidden max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
 
-        <!-- Metrics Stats Grid (6 Cards) -->
+        <!-- Metrics Stats Grid (Metadata Stats Collection Counter Cards) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg shrink-0"><i class="fas fa-users"></i></div>
@@ -74,7 +74,7 @@
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg shrink-0"><i class="fas fa-bell"></i></div>
                 <div>
-                    <p class="text-[11px] font-bold text-slate-400">नोटिफि. ON (Saved)</p>
+                    <p class="text-[11px] font-bold text-slate-400">नोटिफि. ON</p>
                     <h3 id="stat-notif-on" class="text-xl font-extrabold text-emerald-600">0</h3>
                 </div>
             </div>
@@ -108,40 +108,7 @@
             </div>
         </div>
 
-        <!-- 1. USER MANAGEMENT PANEL (Registered Users & Token Details) -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
-                <h3 class="font-bold text-sm text-slate-800 flex items-center">
-                    <i class="fas fa-address-book text-teal-700 mr-2"></i> पंजीकृत यूज़र्स एवं FCM टोकन स्थिति
-                </h3>
-                <div class="relative w-full sm:w-64">
-                    <input type="text" id="search-user-input" oninput="filterUsers()" placeholder="यूज़र खोजें (नाम, नंबर...)" 
-                           class="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-none">
-                    <i class="fas fa-search absolute left-2.5 top-2 text-slate-400 text-xs"></i>
-                </div>
-            </div>
-
-            <!-- Users List Table -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs text-slate-600">
-                    <thead class="bg-slate-100 text-slate-700 font-bold uppercase border-b">
-                        <tr>
-                            <th class="p-2.5">मोबाइल नंबर</th>
-                            <th class="p-2.5">यूज़र का नाम</th>
-                            <th class="p-2.5">जेंडर</th>
-                            <th class="p-2.5">नोटिफिकेशन स्टेटस</th>
-                            <th class="p-2.5">FCM Token</th>
-                            <th class="p-2.5 text-right">एक्शन</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-table-body" class="divide-y">
-                        <!-- Dynamic User Rows -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 2. ADMIN MANAGEMENT PANEL -->
+        <!-- ADMIN MANAGEMENT PANEL -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-bold text-sm text-slate-800 flex items-center">
@@ -178,7 +145,7 @@
             </div>
         </div>
 
-        <!-- 3. MESSAGES MANAGEMENT PANEL -->
+        <!-- MESSAGES MANAGEMENT PANEL -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
                 <div class="flex items-center space-x-3">
@@ -243,7 +210,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getFirestore, collection, doc, getDoc, setDoc, deleteDoc, 
-            query, orderBy, onSnapshot, updateDoc 
+            query, orderBy, onSnapshot, updateDoc, increment 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -260,7 +227,6 @@
 
         let activeAdminPhone = null;
         let cachedAdmins = [];
-        let cachedUsers = [];
         let cachedNotifications = [];
 
         const authForm = document.getElementById('admin-auth-form');
@@ -268,11 +234,16 @@
         const dashboardScreen = document.getElementById('admin-dashboard');
         const loggedAdminInfo = document.getElementById('logged-admin-info');
 
-        // LOCALSTORAGE INITIAL CACHE LOAD (For Instant Display)
+        // LOCALSTORAGE CACHE FOR INSTANT LOADING
         function loadLocalStorageCache() {
             try {
-                const u = localStorage.getItem('admin_cached_users');
-                if (u) { cachedUsers = JSON.parse(u); renderUsersTable(cachedUsers); }
+                const stats = localStorage.getItem('admin_cached_stats');
+                if (stats) {
+                    const data = JSON.parse(stats);
+                    document.getElementById('stat-total-users').innerText = data.totalUsers || 0;
+                    document.getElementById('stat-notif-on').innerText = data.notifOn || 0;
+                    document.getElementById('stat-notif-off').innerText = data.notifOff || 0;
+                }
 
                 const a = localStorage.getItem('admin_cached_admins');
                 if (a) { cachedAdmins = JSON.parse(a); renderAdminsTable(); }
@@ -280,7 +251,6 @@
                 const n = localStorage.getItem('admin_cached_notifications');
                 if (n) { cachedNotifications = JSON.parse(n); renderMessagesTable(cachedNotifications); }
 
-                renderMetrics();
             } catch(e) { console.error("Cache load error", e); }
         }
 
@@ -322,8 +292,8 @@
             loggedAdminInfo.classList.remove('hidden');
             loggedAdminInfo.classList.add('flex');
             
-            loadLocalStorageCache(); // पहले लोकल डेटा दिखाओ
-            loadDashboardData();     // फिर रियलटाइम अपडेट सिंक करो
+            loadLocalStorageCache();
+            loadDashboardData();
         }
 
         window.adminLogout = function() {
@@ -332,22 +302,15 @@
         };
 
         function loadDashboardData() {
-            // 1. REALTIME USERS SYNC WITH FCM TOKEN TRACKING
-            onSnapshot(collection(db, "users"), (snapshot) => {
-                cachedUsers = [];
-                snapshot.forEach(docSnap => {
+            // 1. LISTEN TO COUNTER COLLECTION ('metadata/stats') - ONLY 1 READ COST
+            onSnapshot(doc(db, "metadata", "stats"), (docSnap) => {
+                if (docSnap.exists()) {
                     const data = docSnap.data();
-                    cachedUsers.push({
-                        phone: docSnap.id,
-                        name: data.name || 'Unspecified',
-                        gender: data.gender || 'N/A',
-                        fcmToken: data.fcmToken || null
-                    });
-                });
-                
-                localStorage.setItem('admin_cached_users', JSON.stringify(cachedUsers));
-                renderUsersTable(cachedUsers);
-                renderMetrics();
+                    document.getElementById('stat-total-users').innerText = data.totalUsers || 0;
+                    document.getElementById('stat-notif-on').innerText = data.notifOn || 0;
+                    document.getElementById('stat-notif-off').innerText = data.notifOff || 0;
+                    localStorage.setItem('admin_cached_stats', JSON.stringify(data));
+                }
             });
 
             // 2. REALTIME ADMINS SYNC
@@ -388,73 +351,11 @@
         }
 
         function renderMetrics() {
-            document.getElementById('stat-total-users').innerText = cachedUsers.length;
-            
-            const onCount = cachedUsers.filter(u => u.fcmToken && u.fcmToken.length > 10).length;
-            const offCount = cachedUsers.length - onCount;
-
-            document.getElementById('stat-notif-on').innerText = onCount;
-            document.getElementById('stat-notif-off').innerText = offCount;
-
             document.getElementById('stat-total-msgs').innerText = cachedNotifications.length;
             document.getElementById('stat-total-admins').innerText = cachedAdmins.length;
-            
             const mediaCount = cachedNotifications.filter(m => m.mediaUrl && m.mediaType !== 'none').length;
             document.getElementById('stat-total-media').innerText = mediaCount;
         }
-
-        // RENDER USERS TABLE
-        function renderUsersTable(list) {
-            const tbody = document.getElementById('users-table-body');
-            tbody.innerHTML = '';
-
-            if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">कोई यूज़र नहीं मिला</td></tr>`;
-                return;
-            }
-
-            list.forEach(user => {
-                const hasToken = user.fcmToken && user.fcmToken.length > 10;
-                
-                const notifBadge = hasToken 
-                    ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300"><i class="fas fa-check-circle mr-1"></i> Notification ON</span>`
-                    : `<span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-300"><i class="fas fa-times-circle mr-1"></i> Notification OFF</span>`;
-
-                const tokenStatus = hasToken 
-                    ? `<span class="text-emerald-600 font-mono text-[10px] truncate max-w-[120px] inline-block font-bold" title="${user.fcmToken}">✅ ${user.fcmToken.substring(0, 15)}...</span>`
-                    : `<span class="text-slate-400 text-[10px]">❌ टोकन नहीं है</span>`;
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-2.5 font-mono font-bold text-teal-800">${user.phone}</td>
-                        <td class="p-2.5 font-bold text-slate-800">${user.name}</td>
-                        <td class="p-2.5 text-slate-500">${user.gender}</td>
-                        <td class="p-2.5">${notifBadge}</td>
-                        <td class="p-2.5">${tokenStatus}</td>
-                        <td class="p-2.5 text-right">
-                            <button onclick="deleteUser('${user.phone}')" class="text-rose-600 hover:text-rose-800 font-bold text-xs bg-rose-50 px-2 py-1 rounded border border-rose-200">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        window.filterUsers = function() {
-            const queryText = document.getElementById('search-user-input').value.toLowerCase().trim();
-            const filtered = cachedUsers.filter(u => 
-                (u.name && u.name.toLowerCase().includes(queryText)) ||
-                (u.phone && u.phone.includes(queryText))
-            );
-            renderUsersTable(filtered);
-        };
-
-        window.deleteUser = async function(phone) {
-            if (confirm(`क्या आप यूज़र ${phone} का डेटा डिलीट करना चाहते हैं?`)) {
-                await deleteDoc(doc(db, "users", phone));
-            }
-        };
 
         function renderAdminsTable() {
             const tbody = document.getElementById('admin-table-body');
