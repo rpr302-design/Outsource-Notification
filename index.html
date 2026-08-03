@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Outsource Dynamic Media Hub - FCM Token & Double Tick Fixed</title>
+    <title>Outsource Dynamic Media Hub - FCM Token & Stats Counter</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -54,7 +54,7 @@
                     <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर (10 अंक)</label>
                     <div class="flex space-x-2">
                         <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर लिखें" 
-                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none font-mono">
                     </div>
                 </div>
 
@@ -220,12 +220,12 @@
         <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4" oncontextmenu="return false;"></div>
     </div>
 
-    <!-- Firebase v10 SDK with Messaging -->
+    <!-- Firebase v10 SDK with Counter Collection Support -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, 
-            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove 
+            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove, increment 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
@@ -288,12 +288,11 @@
         const adminBadge = document.getElementById('admin-badge');
         const seeMoreContainer = document.getElementById('see-more-container');
 
-        // 🟢 SERVICE WORKER REGISTRATION FUNCTION
+        // SERVICE WORKER REGISTRATION
         async function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 try {
                     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                    console.log('Service Worker Registered Successfully:', registration);
                     return registration;
                 } catch (err) {
                     console.error('Service Worker Registration Failed:', err);
@@ -333,7 +332,7 @@
             filePreviewBar.classList.add('hidden');
         });
 
-        // 🔔 REAL FCM TOKEN GENERATION & FIRESTORE SAVE LOGIC
+        // 🟢 REAL FCM TOKEN GENERATION + COUNTER COLLECTION ('metadata/stats') UPDATER
         async function fetchAndSaveFCMToken(phone) {
             if (!("Notification" in window)) return;
 
@@ -362,11 +361,26 @@
 
                         if (currentToken && phone) {
                             const userDocRef = doc(db, "users", phone);
-                            await setDoc(userDocRef, { 
-                                fcmToken: currentToken, 
-                                lastTokenUpdate: serverTimestamp() 
-                            }, { merge: true });
-                            console.log("SUCCESS: fcmToken saved to Firestore:", currentToken);
+                            const userSnap = await getDoc(userDocRef);
+                            const statsRef = doc(db, "metadata", "stats");
+
+                            if (userSnap.exists()) {
+                                const oldData = userSnap.data();
+                                const hadToken = oldData.fcmToken && oldData.fcmToken.length > 10;
+
+                                await setDoc(userDocRef, { 
+                                    fcmToken: currentToken, 
+                                    lastTokenUpdate: serverTimestamp() 
+                                }, { merge: true });
+
+                                // यदि यूज़र ने पहली बार नोटिफिकेशन Allow किया है तो काउंटर अपडेट करें
+                                if (!hadToken) {
+                                    await setDoc(statsRef, {
+                                        notifOn: increment(1),
+                                        notifOff: increment(-1)
+                                    }, { merge: true });
+                                }
+                            }
                         }
                     }
                 } else {
@@ -465,7 +479,7 @@
             }
         }
 
-        // LOGIN & SIGNUP LOGIC
+        // LOGIN & SIGNUP WITH METADATA/STATS COUNTER UPDATER
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
@@ -507,15 +521,25 @@
                     submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
 
                     const userDocRef = doc(db, "users", phone);
+                    const statsRef = doc(db, "metadata", "stats");
                     let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
 
+                    // 1. नया यूज़र डॉक्यूमेंट बनाएँ
                     await setDoc(userDocRef, {
                         name,
                         phone,
                         gender,
+                        fcmToken: null,
                         createdAt: serverTimestamp(),
                         lastLogin: serverTimestamp()
                     });
+
+                    // 2. 🟢 COUNTER COLLECTION ('metadata/stats') में totalUsers व notifOff +1 करें
+                    await setDoc(statsRef, {
+                        totalUsers: increment(1),
+                        notifOff: increment(1),
+                        notifOn: increment(0)
+                    }, { merge: true });
 
                     localStorage.setItem('notification_user', JSON.stringify(userData));
                     await showChatScreen(userData);
