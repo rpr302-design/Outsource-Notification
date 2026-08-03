@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Outsource Dynamic Media Hub - Admin Supercharged</title>
+    <title>Outsource Dynamic Media Hub</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,12 +14,9 @@
         .wa-bg { background-color: #efeae2; }
         .blue-link { color: #2563eb; font-weight: 600; text-decoration: underline; word-break: break-all; }
         .blue-link:hover { color: #1d4ed8; }
-        .tick-blue { color: #53bdeb; }
-        .tick-gray { color: #8696a0; }
         .like-btn-active { color: #e11d48; font-weight: bold; }
         img, video { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
         
-        /* Mobile Dynamic Viewport Fix */
         .app-height {
             height: 100vh;
             height: 100dvh;
@@ -127,7 +124,7 @@
             <!-- Messages Stream Container -->
             <div id="messages-container" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
                 
-                <!-- See More Load Button -->
+                <!-- Admin Only: See More Load Button -->
                 <div id="see-more-container" class="hidden text-center my-2">
                     <button id="see-more-btn" onclick="loadMoreMessages()" class="bg-white/80 hover:bg-white text-teal-800 text-xs font-bold px-4 py-1.5 rounded-full shadow border border-slate-300 transition">
                         <i class="fas fa-history mr-1"></i> और पुराने मैसेज देखें (See More)
@@ -246,7 +243,7 @@
         const storage = getStorage(app);
 
         const MAX_LIKES_LIMIT = 19500; 
-        const INITIAL_LOAD_LIMIT = 50; // 🛑 50 मैसेज लिमिट
+        const INITIAL_ADMIN_LOAD_LIMIT = 50; 
         const CUSTOM_DELIVERED_LOGO = "https://images.app.goo.gl/346sRThv3e3G69188"; 
 
         let currentUser = null;
@@ -256,7 +253,7 @@
         let activeTab = 'recent';
         let pendingNewUserCheck = false;
         let activeEditingDocId = null;
-        let displayLimit = INITIAL_LOAD_LIMIT;
+        let adminDisplayLimit = INITIAL_ADMIN_LOAD_LIMIT;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -387,7 +384,7 @@
             }
         });
 
-        // 🟢 FIREBASE 'admins' COLLECTION CHECK (Dynamic Multi-Admin Power)
+        // 🟢 CHECK FIREBASE 'admins' COLLECTION
         async function checkIfAdmin(phone) {
             try {
                 const adminDocRef = doc(db, "admins", phone);
@@ -483,8 +480,9 @@
             syncMessagesWhatsAppStyle();
         }
 
-        // ZERO READ OPTIMIZED DELTA FETCHING LOGIC
+        // 🟢 ZERO READ & CONDITIONAL ROLE-BASED SYNC
         function syncMessagesWhatsAppStyle() {
+            // Step 1: LocalStorage से डेटा तुरंत लोड करें (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
             let hasCache = false;
 
@@ -506,6 +504,7 @@
 
             let q;
             if (hasCache && lastTimestampMs > 0) {
+                // ⚡ लोकल स्टोरेज में डेटा होने पर -> केवल नए आए मैसेज ही फेच होंगे (0 READ ON REFRESH)
                 const lastDate = new Date(lastTimestampMs);
                 const firestoreTimestamp = Timestamp.fromDate(lastDate);
                 q = query(
@@ -514,11 +513,21 @@
                     orderBy("timestamp", "desc")
                 );
             } else {
-                q = query(
-                    collection(db, "notifications"), 
-                    orderBy("timestamp", "desc"), 
-                    limit(INITIAL_LOAD_LIMIT)
-                );
+                if (isAdminUser) {
+                    // 🛑 एडमिन के लिए: शुरुआत में 50 मैसेज
+                    q = query(
+                        collection(db, "notifications"), 
+                        orderBy("timestamp", "desc"), 
+                        limit(INITIAL_ADMIN_LOAD_LIMIT)
+                    );
+                } else {
+                    // 🛑 साधारण यूजर के लिए: STRICTLY केवल एडमिन का LAST 1 MESSAGE
+                    q = query(
+                        collection(db, "notifications"), 
+                        orderBy("timestamp", "desc"), 
+                        limit(1)
+                    );
+                }
             }
 
             onSnapshot(q, (snapshot) => {
@@ -551,14 +560,16 @@
                 });
 
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
+
+                // 💾 LocalStorage में सेव
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
         }
 
-        // SEE MORE LOAD FUNCTION
+        // SEE MORE LOAD FUNCTION (ADMIN ONLY)
         window.loadMoreMessages = function() {
-            displayLimit += 50;
+            adminDisplayLimit += 50;
             renderFilteredNotifications();
         };
 
@@ -664,7 +675,7 @@
             }
         });
 
-        // 🟢 DATE FORMATTER & GROUPING HELPER
+        // DATE FORMATTER HELPER
         function getFormattedDateLabel(timestampMs) {
             const msgDate = new Date(timestampMs);
             const today = new Date();
@@ -685,22 +696,27 @@
 
             let filtered = [...allNotificationsData];
 
-            if (activeTab === 'recent') {
-                filtered = filtered.slice(-2);
-            } else if (activeTab === 'media') {
-                filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
-            }
-
-            // 🛑 LAST 50 / DISPLAY LIMIT LOGIC WITH SEE MORE
-            const totalAvailable = filtered.length;
-            if (totalAvailable > displayLimit) {
-                seeMoreContainer.classList.remove('hidden');
-                filtered = filtered.slice(-displayLimit);
-            } else {
+            // 🛑 साधारण यूजर के लिए केवल आखरी 1 मैसेज दिखेगा
+            if (!isAdminUser) {
+                filtered = filtered.slice(-1);
                 seeMoreContainer.classList.add('hidden');
-            }
+            } else {
+                // एडमिन के लिए 50/See More फ़िल्टर
+                if (activeTab === 'recent') {
+                    filtered = filtered.slice(-2);
+                } else if (activeTab === 'media') {
+                    filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
+                }
 
-            messagesContainer.appendChild(seeMoreContainer);
+                const totalAvailable = filtered.length;
+                if (totalAvailable > adminDisplayLimit) {
+                    seeMoreContainer.classList.remove('hidden');
+                    filtered = filtered.slice(-adminDisplayLimit);
+                } else {
+                    seeMoreContainer.classList.add('hidden');
+                }
+                messagesContainer.appendChild(seeMoreContainer);
+            }
 
             if (filtered.length === 0) {
                 messagesContainer.innerHTML += `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-folder-open text-3xl mb-2"></i><br>यहाँ कोई फ़ाइल या संदेश उपलब्ध नहीं है।</div>`;
@@ -714,7 +730,7 @@
                 const dateLabel = getFormattedDateLabel(data.timestampMs);
                 const msgTime = data.timestampMs ? new Date(data.timestampMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
 
-                // 📅 DATE SEPARATOR HEADER
+                // DATE SEPARATOR HEADER (Only when date changes)
                 if (dateLabel !== lastRenderedDate) {
                     lastRenderedDate = dateLabel;
                     messagesContainer.innerHTML += `
