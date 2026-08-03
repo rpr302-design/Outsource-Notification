@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Outsource Dynamic Media Hub - Token & Hybrid Cache Fixed</title>
+    <title>Outsource Dynamic Media Hub - FCM Token & Double Tick Fixed</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,6 +14,8 @@
         .wa-bg { background-color: #efeae2; }
         .blue-link { color: #2563eb; font-weight: 600; text-decoration: underline; word-break: break-all; }
         .blue-link:hover { color: #1d4ed8; }
+        .tick-blue { color: #53bdeb; }
+        .tick-gray { color: #8696a0; }
         .like-btn-active { color: #e11d48; font-weight: bold; }
         img, video { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
         
@@ -218,7 +220,7 @@
         <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4" oncontextmenu="return false;"></div>
     </div>
 
-    <!-- Firebase v10 SDK -->
+    <!-- Firebase v10 SDK with Messaging -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
@@ -226,6 +228,7 @@
             query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
@@ -239,10 +242,17 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const storage = getStorage(app);
+        
+        let messaging = null;
+        try {
+            messaging = getMessaging(app);
+        } catch (e) {
+            console.log("Messaging not supported in this browser context", e);
+        }
 
         const MAX_LIKES_LIMIT = 19500; 
         const INITIAL_ADMIN_LOAD_LIMIT = 50; 
-        const CUSTOM_DELIVERED_LOGO = "https://images.app.goo.gl/346sRThv3e3G69188"; 
+        const VAPID_KEY = "YOUR_PUBLIC_VAPID_KEY_HERE"; // FCM Web Push VAPID Key (Optional for Browser Token)
 
         let currentUser = null;
         let isAdminUser = false;
@@ -308,11 +318,33 @@
             filePreviewBar.classList.add('hidden');
         });
 
-        window.requestNotificationPermission = async function() {
-            if ("Notification" in window) {
+        // 🔔 FETCH REAL FCM TOKEN AND SAVE TO FIRESTORE
+        async function fetchAndSaveFCMToken(phone) {
+            if (!messaging) return;
+            try {
                 const permission = await Notification.requestPermission();
-                if (permission === 'granted') blockedBanner.classList.add('hidden');
-                else blockedBanner.classList.remove('hidden');
+                if (permission === 'granted') {
+                    blockedBanner.classList.add('hidden');
+                    const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY }).catch(e => null);
+                    
+                    if (currentToken) {
+                        const userDocRef = doc(db, "users", phone);
+                        await updateDoc(userDocRef, { fcmToken: currentToken, lastTokenUpdate: serverTimestamp() }).catch(async () => {
+                            await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
+                        });
+                        console.log("fcmToken saved successfully:", currentToken);
+                    }
+                } else {
+                    blockedBanner.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error("FCM Token Error:", err);
+            }
+        }
+
+        window.requestNotificationPermission = function() {
+            if (currentUser && currentUser.phone) {
+                fetchAndSaveFCMToken(currentUser.phone);
             }
         };
 
@@ -382,7 +414,6 @@
             }
         });
 
-        // 🟢 CHECK FIREBASE 'admins' COLLECTION
         async function checkIfAdmin(phone) {
             try {
                 const adminDocRef = doc(db, "admins", phone);
@@ -394,7 +425,7 @@
             }
         }
 
-        // 🔑 TOKEN & LOGIN LOGIC (SAVED PERMANENTLY IN LOCALSTORAGE)
+        // LOGIN & SIGNUP
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
@@ -411,16 +442,14 @@
                     const docSnap = await getDoc(userDocRef);
 
                     if (docSnap.exists()) {
-                        const token = "TOKEN_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
                         const userData = {
-                            token: token,
                             name: docSnap.data().name || "यूज़र",
                             phone: phone,
                             gender: docSnap.data().gender || "Unspecified",
                             lastLogin: new Date().toISOString()
                         };
 
-                        await updateDoc(userDocRef, { lastLogin: serverTimestamp(), userToken: token });
+                        await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
                         localStorage.setItem('notification_user', JSON.stringify(userData));
                         await showChatScreen(userData);
                     } else {
@@ -437,12 +466,10 @@
 
                     submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
 
-                    const token = "TOKEN_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
                     const userDocRef = doc(db, "users", phone);
-                    let userData = { token, name, phone, gender, lastLogin: new Date().toISOString() };
+                    let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
 
                     await setDoc(userDocRef, {
-                        userToken: token,
                         name,
                         phone,
                         gender,
@@ -460,7 +487,6 @@
             }
         });
 
-        // AUTO LOGIN FROM LOCALSTORAGE TOKEN
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
         if (savedUser && savedUser.phone) { 
             showChatScreen(savedUser); 
@@ -482,13 +508,12 @@
                 adminBadge.classList.remove('hidden');
             }
 
-            requestNotificationPermission();
+            fetchAndSaveFCMToken(user.phone);
             syncMessagesWhatsAppStyle();
         }
 
-        // 🟢 HYBRID SYNC: LOCALSTORAGE ACCUMULATION + FIREBASE 1-MSG FETCH
+        // HYBRID SYNC: LOCALSTORAGE ACCUMULATION + FIREBASE FETCH
         function syncMessagesWhatsAppStyle() {
-            // Step 1: LocalStorage से सारे पुराने मैसेज स्क्रीन पर लोड करें (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
             if (localCachedData) {
                 try {
@@ -501,14 +526,12 @@
 
             let q;
             if (isAdminUser) {
-                // एडमिन के लिए 50 मैसेज की लिमिट
                 q = query(
                     collection(db, "notifications"), 
                     orderBy("timestamp", "desc"), 
                     limit(INITIAL_ADMIN_LOAD_LIMIT)
                 );
             } else {
-                // 🛑 यूज़र के लिए: FIREBASE से STRICTLY केवल LAST 1 MESSAGE
                 q = query(
                     collection(db, "notifications"), 
                     orderBy("timestamp", "desc"), 
@@ -537,30 +560,25 @@
                         timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
                     };
 
-                    // अगर मैसेज पहले से लोकल स्टोरेज में नहीं है, तो जोड़ें (पुरानी हिस्ट्री डिलीट किए बिना)
                     const index = allNotificationsData.findIndex(item => item.id === fetchedDoc.id);
                     if (index !== -1) {
-                        allNotificationsData[index] = fetchedDoc; // अपडेट डेटा
+                        allNotificationsData[index] = fetchedDoc;
                     } else {
-                        allNotificationsData.push(fetchedDoc); // नया मैसेज लिस्ट में जोड़ें
+                        allNotificationsData.push(fetchedDoc);
                     }
                 });
 
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
-
-                // 💾 लोकल स्टोरेज में लगातार सेव रखें
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
         }
 
-        // SEE MORE LOAD FUNCTION (ADMIN ONLY)
         window.loadMoreMessages = function() {
             adminDisplayLimit += 50;
             renderFilteredNotifications();
         };
 
-        // LIKE TOGGLE (19,500 LIKES CAP)
         window.toggleLike = async function(docId) {
             if (!currentUser) return;
             const userPhone = currentUser.phone;
@@ -591,7 +609,6 @@
             renderFilteredNotifications();
         };
 
-        // MARK SEEN
         async function markAsSeen(docId) {
             if (!currentUser) return;
             const userPhone = currentUser.phone;
@@ -609,7 +626,6 @@
             }
         }
 
-        // ADMIN EDIT FUNCTION
         window.openEditModal = function(docId) {
             const notificationDoc = allNotificationsData.find(item => item.id === docId);
             if (!notificationDoc) return;
@@ -662,7 +678,6 @@
             }
         });
 
-        // DATE FORMATTER HELPER
         function getFormattedDateLabel(timestampMs) {
             const msgDate = new Date(timestampMs);
             const today = new Date();
@@ -689,7 +704,6 @@
                 filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
             }
 
-            // 🛑 एडमिन के लिए 50/See More फ़िल्टर, साधारण यूज़र के लिए पूरी लोकल स्टोरेज की लिस्ट दिखेगी
             if (isAdminUser) {
                 const totalAvailable = filtered.length;
                 if (totalAvailable > adminDisplayLimit) {
@@ -715,7 +729,6 @@
                 const dateLabel = getFormattedDateLabel(data.timestampMs);
                 const msgTime = data.timestampMs ? new Date(data.timestampMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
 
-                // DATE SEPARATOR HEADER
                 if (dateLabel !== lastRenderedDate) {
                     lastRenderedDate = dateLabel;
                     messagesContainer.innerHTML += `
@@ -733,8 +746,17 @@
 
                 const seenList = data.seenBy || [];
                 const seenCount = seenList.length;
+                const isSeenByMe = currentUser && seenList.includes(currentUser.phone);
 
-                let customLogoHTML = `<img src="${CUSTOM_DELIVERED_LOGO}" alt="Delivered" class="w-3.5 h-3.5 object-contain inline-block ml-1" title="संदेश पहुँचा">`;
+                // 📌 WHATSAPP STYLE ACCURATE DOUBLE TICK LOGIC
+                let tickHTML = `<i class="fas fa-check tick-gray text-[10px]" title="भेजा गया"></i>`;
+                if (seenCount > 0) {
+                    if (isSeenByMe) {
+                        tickHTML = `<i class="fas fa-check-double tick-blue text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
+                    } else {
+                        tickHTML = `<i class="fas fa-check-double tick-gray text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
+                    }
+                }
 
                 let mediaHTML = '';
                 if (data.mediaType === 'image' && data.mediaUrl) {
@@ -810,7 +832,7 @@
                                 <button onclick="shareNotification('${data.title || ''}', '${data.message || ''}', '${data.mediaUrl || ''}')" class="text-teal-700 hover:text-teal-900 text-xs font-bold flex items-center bg-teal-50 px-2 py-1 rounded-lg">
                                     <i class="fas fa-share-alt mr-1"></i> शेयर
                                 </button>
-                                ${customLogoHTML}
+                                <span class="ml-1 flex items-center">${tickHTML}</span>
                             </div>
                         </div>
                     </div>
