@@ -5,7 +5,7 @@ html_code = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Outsource Dynamic Media Hub - Secure Version</title>
+    <title>Outsource Dynamic Media Hub - Zero Read Optimized</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,7 +19,6 @@ html_code = '''<!DOCTYPE html>
         .tick-blue { color: #53bdeb; }
         .tick-gray { color: #8696a0; }
         .like-btn-active { color: #e11d48; font-weight: bold; }
-        /* Disable text selection and dragging on images/videos to hinder downloads */
         img, video { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
     </style>
 </head>
@@ -89,7 +88,7 @@ html_code = '''<!DOCTYPE html>
         <!-- 2. Main Media Feed / Chat Screen -->
         <div id="chat-screen" class="hidden flex-col h-full wa-bg relative">
             
-            <!-- STICKY TOP HEADER (User count removed) -->
+            <!-- STICKY TOP HEADER -->
             <div class="bg-teal-800 text-white px-4 py-3 flex items-center justify-between shadow-md sticky top-0 z-20">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center font-bold text-lg border border-white/20">
@@ -181,7 +180,28 @@ html_code = '''<!DOCTYPE html>
 
     </div>
 
-    <!-- Media Viewer Modal (Download Option Removed) -->
+    <!-- Admin Message Edit Modal -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-4 w-full max-w-sm shadow-2xl space-y-3">
+            <h3 class="font-bold text-sm text-teal-800 flex items-center">
+                <i class="fas fa-edit mr-2"></i> मैसेज में संशोधन करें
+            </h3>
+            <div>
+                <label class="text-[11px] font-bold text-slate-600 block mb-1">शीर्षक (Title)</label>
+                <input type="text" id="edit-msg-title" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 font-bold">
+            </div>
+            <div>
+                <label class="text-[11px] font-bold text-slate-600 block mb-1">संदेश (Message)</label>
+                <textarea id="edit-msg-body" rows="4" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"></textarea>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeEditModal()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold">रद्द करें</button>
+                <button id="save-edit-btn" class="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold">सेव करें</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Media Viewer Modal -->
     <div id="media-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex-col items-center justify-between p-4">
         <div class="w-full flex justify-between items-center text-white">
             <span id="modal-title" class="text-xs font-bold truncate max-w-[80%]">मीडिया व्यूअर</span>
@@ -194,8 +214,8 @@ html_code = '''<!DOCTYPE html>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
-            getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, 
-            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove, runTransaction 
+            getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, 
+            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
@@ -213,13 +233,14 @@ html_code = '''<!DOCTYPE html>
         const storage = getStorage(app);
 
         const ADMIN_PHONE_NUMBER = "9993332211"; 
-        const MAX_LIKES_LIMIT = 19500; // 🛑 19500 Likes Max Limit Condition
+        const MAX_LIKES_LIMIT = 19500; // 🛑 19,500 Max Likes Limit
 
         let currentUser = null;
         let selectedFile = null;
         let allNotificationsData = [];
         let activeTab = 'recent';
         let pendingNewUserCheck = false;
+        let activeEditingDocId = null;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -297,7 +318,6 @@ html_code = '''<!DOCTYPE html>
             renderFilteredNotifications();
         };
 
-        // Modal without download options
         window.openMediaModal = function(url, type, name) {
             const modal = document.getElementById('media-modal');
             const modalBody = document.getElementById('modal-body');
@@ -430,7 +450,7 @@ html_code = '''<!DOCTYPE html>
             syncMessagesWhatsAppStyle();
         }
 
-        // 🟢 NAYA USER FIX + PERSISTENT LOCALSTORAGE SYSTEM
+        // 🟢 ZERO READ ARCHITECTURE + NEW USER DELTA SYNC
         function syncMessagesWhatsAppStyle() {
             const localCachedData = localStorage.getItem('cached_notifications');
             let hasCache = false;
@@ -453,7 +473,7 @@ html_code = '''<!DOCTYPE html>
 
             let q;
             if (hasCache && lastTimestampMs > 0) {
-                // पुराने यूज़र के लिए: केवल नये आने वाले मैसेज लाओ
+                // पुरानी कैशे मौजूद है -> केवल नये मैसेज ही फेच होंगे (0 Extra Read)
                 const lastDate = new Date(lastTimestampMs);
                 const firestoreTimestamp = Timestamp.fromDate(lastDate);
                 q = query(
@@ -462,7 +482,7 @@ html_code = '''<!DOCTYPE html>
                     orderBy("timestamp", "desc")
                 );
             } else {
-                // 🛑 नया यूज़र (No Cache): केवल एडमिन का LAST MESSAGE ही दिखेगा
+                // 🛑 नया यूज़र -> केवल एडमिन का LAST 1 MESSAGE फेच होगा
                 q = query(
                     collection(db, "notifications"), 
                     orderBy("timestamp", "desc"), 
@@ -502,60 +522,46 @@ html_code = '''<!DOCTYPE html>
                 allNotificationsData = Array.from(existingMap.values());
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
 
-                // लोकल स्टोरेज में सेव रहेगा लगातार
+                // LocalStorage में लगातार सेव रहेगा
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
         }
 
-        // 🟢 LIKE TOGGLE WITH 19,500 MAX LIMIT CONDITION
+        // 🟢 LIKE TOGGLE (19,500 LIKES CAP + LOCALSTORAGE SAFEGUARD)
         window.toggleLike = async function(docId) {
             if (!currentUser) return;
             const userPhone = currentUser.phone;
-            const docRef = doc(db, "notifications", docId);
+            const notificationDoc = allNotificationsData.find(item => item.id === docId);
 
-            try {
-                await runTransaction(db, async (transaction) => {
-                    const sfDoc = await transaction.get(docRef);
-                    if (!sfDoc.exists()) return;
+            if (!notificationDoc) return;
 
-                    const likes = sfDoc.data().likes || [];
-                    const isLiked = likes.includes(userPhone);
+            if (!notificationDoc.likes) notificationDoc.likes = [];
+            const isLiked = notificationDoc.likes.includes(userPhone);
 
-                    if (isLiked) {
-                        transaction.update(docRef, { likes: arrayRemove(userPhone) });
-                    } else {
-                        // 🛑 19,500 लाइक्स से ज्यादा होने पर नया लाइक सेव न हो
-                        if (likes.length >= MAX_LIKES_LIMIT) {
-                            throw new Error("LIKE_LIMIT_REACHED");
-                        }
-                        transaction.update(docRef, { likes: arrayUnion(userPhone) });
-                    }
-                });
-
-                // Update Local UI Data
-                const localDoc = allNotificationsData.find(item => item.id === docId);
-                if (localDoc) {
-                    if (!localDoc.likes) localDoc.likes = [];
-                    if (localDoc.likes.includes(userPhone)) {
-                        localDoc.likes = localDoc.likes.filter(id => id !== userPhone);
-                    } else {
-                        localDoc.likes.push(userPhone);
-                    }
-                    localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
-                    renderFilteredNotifications();
-                }
-
-            } catch (e) {
-                if (e.message === "LIKE_LIMIT_REACHED") {
-                    alert(`क्षमा करें! इस मैसेज पर अधिकतम लाइक सीमा (${MAX_LIKES_LIMIT}) पूरी हो चुकी है।`);
-                } else {
-                    console.error("Like Error: ", e);
-                }
+            // 🛑 अगर लाइक्स 19500 तक पहुँच चुके हैं तो केवल लोकल स्टोरेज में रहेगा, नो फायरबेस रिक्वेस्ट!
+            if (!isLiked && notificationDoc.likes.length >= MAX_LIKES_LIMIT) {
+                notificationDoc.likes.push(userPhone);
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                renderFilteredNotifications();
+                return;
             }
+
+            // सामान्य केस -> फायरबेस में भी अपग्रेड होगा
+            const docRef = doc(db, "notifications", docId);
+            if (isLiked) {
+                notificationDoc.likes = notificationDoc.likes.filter(id => id !== userPhone);
+                await updateDoc(docRef, { likes: arrayRemove(userPhone) });
+            } else {
+                notificationDoc.likes.push(userPhone);
+                await updateDoc(docRef, { likes: arrayUnion(userPhone) });
+            }
+
+            localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+            renderFilteredNotifications();
         };
 
-        // 🟢 MARK SEEN
+        // 🟢 MARK SEEN (DOUBLE TICK)
         async function markAsSeen(docId) {
             if (!currentUser) return;
             const userPhone = currentUser.phone;
@@ -573,35 +579,59 @@ html_code = '''<!DOCTYPE html>
             }
         }
 
-        // 🟢 EDIT NOTIFICATION (ADMIN UPDATE FUNCTION)
-        window.editNotification = async function(docId) {
+        // 🟢 ADMIN EDIT FUNCTION (Title + Message Fix via Modal)
+        window.openEditModal = function(docId) {
             const notificationDoc = allNotificationsData.find(item => item.id === docId);
             if (!notificationDoc) return;
 
-            const newTitle = prompt("नया शीर्षक दर्ज करें:", notificationDoc.title || '');
-            if (newTitle === null) return; // Cancelled
+            activeEditingDocId = docId;
+            document.getElementById('edit-msg-title').value = notificationDoc.title || '';
+            document.getElementById('edit-msg-body').value = notificationDoc.message || '';
+            document.getElementById('edit-modal').classList.remove('hidden');
+        };
 
-            const newMessage = prompt("नया सन्देश दर्ज करें:", notificationDoc.message || '');
-            if (newMessage === null) return; // Cancelled
+        window.closeEditModal = function() {
+            activeEditingDocId = null;
+            document.getElementById('edit-modal').classList.add('hidden');
+        };
+
+        document.getElementById('save-edit-btn').addEventListener('click', async () => {
+            if (!activeEditingDocId) return;
+
+            const newTitle = document.getElementById('edit-msg-title').value.trim();
+            const newMessage = document.getElementById('edit-msg-body').value.trim();
+
+            if (!newMessage && !newTitle) { alert("शीर्षक या सन्देश भरें!"); return; }
+
+            const saveBtn = document.getElementById('save-edit-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i> सेव हो रहा है...`;
 
             try {
-                const docRef = doc(db, "notifications", docId);
+                const docRef = doc(db, "notifications", activeEditingDocId);
                 await updateDoc(docRef, {
-                    title: newTitle.trim(),
-                    message: newMessage.trim()
+                    title: newTitle,
+                    message: newMessage
                 });
 
-                // Update Local Cache Immediately
-                notificationDoc.title = newTitle.trim();
-                notificationDoc.message = newMessage.trim();
+                // अपडेट डेटा को तुरंत लोकल स्टोरज और UI में अपडेट करें
+                const localDoc = allNotificationsData.find(item => item.id === activeEditingDocId);
+                if (localDoc) {
+                    localDoc.title = newTitle;
+                    localDoc.message = newMessage;
+                }
+
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
-                alert("मैसेज सफलतापूर्वक अपडेट कर दिया गया!");
+                closeEditModal();
 
-            } catch (error) {
-                alert("मैसेज अपडेट करने में त्रुटि: " + error.message);
+            } catch (err) {
+                alert("सुधार करने में त्रुटि: " + err.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "सेव करें";
             }
-        };
+        });
 
         function renderFilteredNotifications() {
             messagesContainer.innerHTML = '';
@@ -641,7 +671,6 @@ html_code = '''<!DOCTYPE html>
                     }
                 }
 
-                // Removed download action from render elements
                 let mediaHTML = '';
                 if (data.mediaType === 'image' && data.mediaUrl) {
                     mediaHTML = `
@@ -685,7 +714,7 @@ html_code = '''<!DOCTYPE html>
                             <div class="flex items-center space-x-2">
                                 <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
                                 ${isAdmin ? `
-                                    <button onclick="editNotification('${docId}')" class="text-blue-500 hover:text-blue-700 text-xs ml-1" title="मैसेज सुधारें"><i class="fas fa-edit"></i></button>
+                                    <button onclick="openEditModal('${docId}')" class="text-blue-500 hover:text-blue-700 text-xs ml-1" title="मैसेज सुधारें"><i class="fas fa-edit"></i></button>
                                     <button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1" title="डिलीट करें"><i class="fas fa-trash-alt"></i></button>
                                 ` : ''}
                             </div>
