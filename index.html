@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Outsource Dynamic Media Hub</title>
+    <title>Outsource Dynamic Media Hub - Token & Hybrid Cache Fixed</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -123,8 +123,6 @@
 
             <!-- Messages Stream Container -->
             <div id="messages-container" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
-                
-                <!-- Admin Only: See More Load Button -->
                 <div id="see-more-container" class="hidden text-center my-2">
                     <button id="see-more-btn" onclick="loadMoreMessages()" class="bg-white/80 hover:bg-white text-teal-800 text-xs font-bold px-4 py-1.5 rounded-full shadow border border-slate-300 transition">
                         <i class="fas fa-history mr-1"></i> और पुराने मैसेज देखें (See More)
@@ -396,6 +394,7 @@
             }
         }
 
+        // 🔑 TOKEN & LOGIN LOGIC (SAVED PERMANENTLY IN LOCALSTORAGE)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
@@ -412,14 +411,16 @@
                     const docSnap = await getDoc(userDocRef);
 
                     if (docSnap.exists()) {
+                        const token = "TOKEN_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
                         const userData = {
+                            token: token,
                             name: docSnap.data().name || "यूज़र",
                             phone: phone,
                             gender: docSnap.data().gender || "Unspecified",
                             lastLogin: new Date().toISOString()
                         };
 
-                        await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                        await updateDoc(userDocRef, { lastLogin: serverTimestamp(), userToken: token });
                         localStorage.setItem('notification_user', JSON.stringify(userData));
                         await showChatScreen(userData);
                     } else {
@@ -436,10 +437,12 @@
 
                     submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
 
+                    const token = "TOKEN_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
                     const userDocRef = doc(db, "users", phone);
-                    let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
+                    let userData = { token, name, phone, gender, lastLogin: new Date().toISOString() };
 
                     await setDoc(userDocRef, {
+                        userToken: token,
                         name,
                         phone,
                         gender,
@@ -457,8 +460,11 @@
             }
         });
 
+        // AUTO LOGIN FROM LOCALSTORAGE TOKEN
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
-        if (savedUser) { showChatScreen(savedUser); }
+        if (savedUser && savedUser.phone) { 
+            showChatScreen(savedUser); 
+        }
 
         async function showChatScreen(user) {
             currentUser = user;
@@ -480,54 +486,34 @@
             syncMessagesWhatsAppStyle();
         }
 
-        // 🟢 ZERO READ & CONDITIONAL ROLE-BASED SYNC
+        // 🟢 HYBRID SYNC: LOCALSTORAGE ACCUMULATION + FIREBASE 1-MSG FETCH
         function syncMessagesWhatsAppStyle() {
-            // Step 1: LocalStorage से डेटा तुरंत लोड करें (0 Read Cost)
+            // Step 1: LocalStorage से सारे पुराने मैसेज स्क्रीन पर लोड करें (0 Read Cost)
             const localCachedData = localStorage.getItem('cached_notifications');
-            let hasCache = false;
-
             if (localCachedData) {
                 try {
                     allNotificationsData = JSON.parse(localCachedData);
-                    if (allNotificationsData.length > 0) hasCache = true;
                     const spinner = document.getElementById('loading-spinner');
                     if (spinner) spinner.remove();
                     renderFilteredNotifications();
                 } catch(e) { console.error("Cache Read Error", e); }
             }
 
-            let lastTimestampMs = 0;
-            if (allNotificationsData.length > 0) {
-                const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
-                if (maxTime > 0) lastTimestampMs = maxTime;
-            }
-
             let q;
-            if (hasCache && lastTimestampMs > 0) {
-                // ⚡ लोकल स्टोरेज में डेटा होने पर -> केवल नए आए मैसेज ही फेच होंगे (0 READ ON REFRESH)
-                const lastDate = new Date(lastTimestampMs);
-                const firestoreTimestamp = Timestamp.fromDate(lastDate);
+            if (isAdminUser) {
+                // एडमिन के लिए 50 मैसेज की लिमिट
                 q = query(
                     collection(db, "notifications"), 
-                    where("timestamp", ">", firestoreTimestamp),
-                    orderBy("timestamp", "desc")
+                    orderBy("timestamp", "desc"), 
+                    limit(INITIAL_ADMIN_LOAD_LIMIT)
                 );
             } else {
-                if (isAdminUser) {
-                    // 🛑 एडमिन के लिए: शुरुआत में 50 मैसेज
-                    q = query(
-                        collection(db, "notifications"), 
-                        orderBy("timestamp", "desc"), 
-                        limit(INITIAL_ADMIN_LOAD_LIMIT)
-                    );
-                } else {
-                    // 🛑 साधारण यूजर के लिए: STRICTLY केवल एडमिन का LAST 1 MESSAGE
-                    q = query(
-                        collection(db, "notifications"), 
-                        orderBy("timestamp", "desc"), 
-                        limit(1)
-                    );
-                }
+                // 🛑 यूज़र के लिए: FIREBASE से STRICTLY केवल LAST 1 MESSAGE
+                q = query(
+                    collection(db, "notifications"), 
+                    orderBy("timestamp", "desc"), 
+                    limit(1)
+                );
             }
 
             onSnapshot(q, (snapshot) => {
@@ -551,17 +537,18 @@
                         timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
                     };
 
+                    // अगर मैसेज पहले से लोकल स्टोरेज में नहीं है, तो जोड़ें (पुरानी हिस्ट्री डिलीट किए बिना)
                     const index = allNotificationsData.findIndex(item => item.id === fetchedDoc.id);
                     if (index !== -1) {
-                        allNotificationsData[index] = fetchedDoc;
+                        allNotificationsData[index] = fetchedDoc; // अपडेट डेटा
                     } else {
-                        allNotificationsData.push(fetchedDoc);
+                        allNotificationsData.push(fetchedDoc); // नया मैसेज लिस्ट में जोड़ें
                     }
                 });
 
                 allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
 
-                // 💾 LocalStorage में सेव
+                // 💾 लोकल स्टोरेज में लगातार सेव रखें
                 localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             });
@@ -696,18 +683,14 @@
 
             let filtered = [...allNotificationsData];
 
-            // 🛑 साधारण यूजर के लिए केवल आखरी 1 मैसेज दिखेगा
-            if (!isAdminUser) {
-                filtered = filtered.slice(-1);
-                seeMoreContainer.classList.add('hidden');
-            } else {
-                // एडमिन के लिए 50/See More फ़िल्टर
-                if (activeTab === 'recent') {
-                    filtered = filtered.slice(-2);
-                } else if (activeTab === 'media') {
-                    filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
-                }
+            if (activeTab === 'recent') {
+                filtered = filtered.slice(-2);
+            } else if (activeTab === 'media') {
+                filtered = filtered.filter(item => item.mediaUrl && item.mediaType !== 'none');
+            }
 
+            // 🛑 एडमिन के लिए 50/See More फ़िल्टर, साधारण यूज़र के लिए पूरी लोकल स्टोरेज की लिस्ट दिखेगी
+            if (isAdminUser) {
                 const totalAvailable = filtered.length;
                 if (totalAvailable > adminDisplayLimit) {
                     seeMoreContainer.classList.remove('hidden');
@@ -716,6 +699,8 @@
                     seeMoreContainer.classList.add('hidden');
                 }
                 messagesContainer.appendChild(seeMoreContainer);
+            } else {
+                seeMoreContainer.classList.add('hidden');
             }
 
             if (filtered.length === 0) {
@@ -730,7 +715,7 @@
                 const dateLabel = getFormattedDateLabel(data.timestampMs);
                 const msgTime = data.timestampMs ? new Date(data.timestampMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
 
-                // DATE SEPARATOR HEADER (Only when date changes)
+                // DATE SEPARATOR HEADER
                 if (dateLabel !== lastRenderedDate) {
                     lastRenderedDate = dateLabel;
                     messagesContainer.innerHTML += `
