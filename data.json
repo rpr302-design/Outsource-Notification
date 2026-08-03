@@ -1,29 +1,18 @@
 {
-  "totalUsersCount": 1250,
+  "totalUsersCount": 1540,
+  "lastUpdated": "2026-08-03T11:30:00Z",
   "notifications": [
     {
-      "id": "msg_101",
+      "id": "msg_firestore_9921",
       "adminName": "MP Outsource Admin",
-      "title": "आउटसोर्स कर्मचारियों के लिए आवश्यक सूचना",
-      "message": "कृपया सभी साथी अपनी उपस्थिति और विवरण पोर्टल पर दर्ज करें। अधिक जानकारी के लिए नीचे दिए गए लिंक पर जाएँ।\nhttps://example.com",
-      "mediaUrl": "",
-      "mediaType": "none",
-      "fileName": "",
-      "time": "10:30 AM",
-      "likesCount": 45,
-      "viewsCount": 320
-    },
-    {
-      "id": "msg_102",
-      "adminName": "MP Outsource Admin",
-      "title": "नवीनतम आदेश पीडीएफ (PDF)",
-      "message": "विभागीय आदेश का पीडीएफ संलग्न है, डाउनलोड करके देखें।",
-      "mediaUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "title": "नवीनतम आदेश सूची",
+      "message": "कृपया सभी साथी अपना विवरण अपडेट करें।",
+      "mediaUrl": "https://firebasestorage.googleapis.com/.../file.pdf",
       "mediaType": "pdf",
-      "fileName": "Official_Order_2026.pdf",
-      "time": "11:15 AM",
-      "likesCount": 88,
-      "viewsCount": 510
+      "fileName": "Order_Document.pdf",
+      "time": "11:30 AM",
+      "likesCount": 12,
+      "viewsCount": 140
     }
   ]
 }
