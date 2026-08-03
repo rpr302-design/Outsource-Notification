@@ -1,18 +1,29 @@
 {
-  "app_settings": {
-    "total_users_count": 12500,
-    "last_updated": "2026-08-01T16:46:50.512Z"
-  },
+  "totalUsersCount": 1250,
   "notifications": [
     {
-      "id": "msg_1785602810512",
+      "id": "msg_101",
       "adminName": "MP Outsource Admin",
-      "title": "महत्वपूर्ण सूचना",
-      "message": "Outsource Dynamic Media Hub में आपका स्वागत है।",
-      "mediaUrl": null,
+      "title": "आउटसोर्स कर्मचारियों के लिए आवश्यक सूचना",
+      "message": "कृपया सभी साथी अपनी उपस्थिति और विवरण पोर्टल पर दर्ज करें। अधिक जानकारी के लिए नीचे दिए गए लिंक पर जाएँ।\nhttps://example.com",
+      "mediaUrl": "",
       "mediaType": "none",
       "fileName": "",
-      "timestamp": "2026-08-01T16:46:50.512Z"
+      "time": "10:30 AM",
+      "likesCount": 45,
+      "viewsCount": 320
+    },
+    {
+      "id": "msg_102",
+      "adminName": "MP Outsource Admin",
+      "title": "नवीनतम आदेश पीडीएफ (PDF)",
+      "message": "विभागीय आदेश का पीडीएफ संलग्न है, डाउनलोड करके देखें।",
+      "mediaUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "mediaType": "pdf",
+      "fileName": "Official_Order_2026.pdf",
+      "time": "11:15 AM",
+      "likesCount": 88,
+      "viewsCount": 510
     }
   ]
 }
