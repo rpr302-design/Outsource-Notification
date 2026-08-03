@@ -1,9 +1,11 @@
-<!DOCTYPE html>
+import os
+
+html_code = '''<!DOCTYPE html>
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Outsource Connect - Hybrid Zero-Read Architecture</title>
+    <title>Outsource Dynamic Media Hub - Zero Read Optimized</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -28,7 +30,7 @@
         <div id="blocked-banner" class="hidden bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between shadow-md z-30">
             <div class="flex items-center space-x-2">
                 <i class="fas fa-bell-slash text-base"></i>
-                <span>नोटिफिकेशन बंद हैं! अनब्लॉक करें।</span>
+                <span>नोटिफिकेशन बंद हैं! अपडेट्स पाने के लिए अनब्लॉक करें।</span>
             </div>
             <button onclick="requestNotificationPermission()" class="bg-slate-900 px-2 py-1 rounded text-[10px] font-bold">Unblock</button>
         </div>
@@ -46,15 +48,20 @@
             <form id="login-form" class="space-y-4 my-auto">
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">मोबाइल नंबर (10 अंक)</label>
-                    <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर लिखें" 
-                           class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                    <div class="flex space-x-2">
+                        <input type="tel" id="user-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का नंबर लिखें" 
+                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                    </div>
                 </div>
 
-                <div id="new-user-fields" class="space-y-4 border-t border-slate-800 pt-3">
+                <div id="new-user-fields" class="hidden space-y-4 border-t border-slate-800 pt-3">
+                    <div class="bg-teal-900/40 p-2.5 rounded-lg border border-teal-500/30 text-[11px] text-teal-300 flex items-center">
+                        <i class="fas fa-user-plus mr-2 text-sm"></i> नया नंबर मिला! कृपया अपना खाता बनाने के लिए नाम व जेंडर चुनें:
+                    </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-1">आपका पूरा नाम</label>
-                        <input type="text" id="user-name" placeholder="जैसे: रोशन प्रजापति" required
-                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                        <input type="text" id="user-name" placeholder="जैसे: रोशन प्रजापति" 
+                               class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:ring-2 focus:ring-teal-400 focus:outline-none">
                     </div>
 
                     <div>
@@ -68,12 +75,12 @@
                 </div>
 
                 <button type="submit" id="submit-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center text-sm transition">
-                    <span>साइन इन करें / प्रवेश करें</span> <i class="fas fa-arrow-right ml-2"></i>
+                    <span id="submit-btn-text">आगे बढ़ें / लॉगिन करें</span> <i class="fas fa-arrow-right ml-2"></i>
                 </button>
             </form>
 
             <div class="text-center text-[11px] text-slate-500 pb-2">
-                🔒 Protected Hybrid JSON Engine (0 User Reads)
+                🔒 एनक्रिप्टेड व सुरक्षित नेटवर्क (Zero Read Architecture)
             </div>
         </div>
 
@@ -117,11 +124,11 @@
             <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3">
                 <div id="loading-spinner" class="text-center py-10 text-slate-500">
                     <i class="fas fa-circle-notch fa-spin text-2xl text-teal-600"></i>
-                    <p class="text-xs mt-2">data.json फ़ाइल से डेटा लोड हो रहा है...</p>
+                    <p class="text-xs mt-2">सूचनाएं लोड हो रही हैं...</p>
                 </div>
             </div>
 
-            <!-- 🟢 Admin Input Box (केवल 9993332211 लॉगिन पर दिखेगा) -->
+            <!-- Admin Input Box -->
             <div id="admin-input-box" class="hidden bg-white p-3 border-t border-slate-300 flex-col space-y-2 shadow-2xl z-20">
                 <input type="text" id="admin-msg-title" placeholder="📌 शीर्षक (Title)" class="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 font-bold">
                 
@@ -141,15 +148,15 @@
 
                 <!-- Attachment Menu Popup -->
                 <div id="attachment-menu" class="hidden absolute bottom-16 left-3 bg-white p-3 rounded-2xl shadow-2xl border border-slate-200 flex space-x-4 z-30">
-                    <button type="button" onclick="triggerFileSelect('image/*')" class="flex flex-col items-center text-[10px] text-slate-700">
+                    <button type="button" onclick="triggerFileSelect('image/*')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
                         <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-image"></i></div>
                         फोटो
                     </button>
-                    <button type="button" onclick="triggerFileSelect('video/*')" class="flex flex-col items-center text-[10px] text-slate-700">
+                    <button type="button" onclick="triggerFileSelect('video/*')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
                         <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-video"></i></div>
                         वीडियो
                     </button>
-                    <button type="button" onclick="triggerFileSelect('.pdf,.doc,.docx,.xlsx')" class="flex flex-col items-center text-[10px] text-slate-700">
+                    <button type="button" onclick="triggerFileSelect('.pdf,.doc,.docx,.xlsx')" class="flex flex-col items-center text-[10px] text-slate-700 hover:text-teal-600">
                         <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-base mb-1 shadow-sm"><i class="fas fa-file-pdf"></i></div>
                         डॉक्यूमेंट
                     </button>
@@ -179,7 +186,7 @@
         <div class="w-full flex justify-between items-center text-white">
             <span id="modal-title" class="text-xs font-bold truncate max-w-[70%]">मीडिया व्यूअर</span>
             <div class="flex items-center space-x-3">
-                <a id="modal-download-btn" href="#" download target="_blank" class="bg-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow">
+                <a id="modal-download-btn" href="#" download target="_blank" class="bg-teal-600 hover:bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow">
                     <i class="fas fa-download mr-1"></i> डाउनलोड
                 </a>
                 <button onclick="closeMediaModal()" class="text-white text-2xl p-2"><i class="fas fa-times"></i></button>
@@ -188,10 +195,13 @@
         <div id="modal-body" class="flex-1 w-full flex items-center justify-center overflow-hidden my-4"></div>
     </div>
 
-    <!-- Firebase SDK (केवल Admin के अपलोड के लिए उपयोग होगा) -->
+    <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { 
+            getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, 
+            query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp, updateDoc, arrayUnion, arrayRemove, increment 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
@@ -208,12 +218,12 @@
         const storage = getStorage(app);
 
         const ADMIN_PHONE_NUMBER = "9993332211"; 
-        const JSON_URL = "data.json"; // 👈 आपकी जॉनसन फ़ाइल का पाथ
-
+        
         let currentUser = null;
         let selectedFile = null;
         let allNotificationsData = [];
         let activeTab = 'recent';
+        let pendingNewUserCheck = false;
 
         const regScreen = document.getElementById('registration-screen');
         const chatScreen = document.getElementById('chat-screen');
@@ -221,6 +231,9 @@
         const userNameInput = document.getElementById('user-name');
         const userPhoneInput = document.getElementById('user-phone');
         const userGenderInput = document.getElementById('user-gender');
+        const newUserFields = document.getElementById('new-user-fields');
+        const submitBtn = document.getElementById('submit-btn');
+        const submitBtnText = document.getElementById('submit-btn-text');
         const messagesContainer = document.getElementById('messages-container');
         const welcomeUserText = document.getElementById('welcome-user');
         const userCountBadge = document.getElementById('user-count-badge');
@@ -242,8 +255,11 @@
             return text.replace(urlPattern, (url) => `<a href="${url}" target="_blank" class="blue-link">${url}</a>`);
         }
 
-        window.toggleAttachmentMenu = () => attachmentMenu.classList.toggle('hidden');
-        window.triggerFileSelect = (acceptType) => {
+        window.toggleAttachmentMenu = function() {
+            attachmentMenu.classList.toggle('hidden');
+        };
+
+        window.triggerFileSelect = function(acceptType) {
             fileInput.accept = acceptType;
             fileInput.click();
             attachmentMenu.classList.add('hidden');
@@ -296,9 +312,13 @@
             modalDownloadBtn.href = url;
             modalBody.innerHTML = '';
 
-            if (type === 'image') modalBody.innerHTML = `<img src="${url}" class="max-w-full max-h-full object-contain rounded-lg">`;
-            else if (type === 'video') modalBody.innerHTML = `<video controls src="${url}" class="max-w-full max-h-full rounded-lg" autoplay></video>`;
-            else if (type === 'pdf') modalBody.innerHTML = `<iframe src="${url}" class="w-full h-full rounded-lg bg-white"></iframe>`;
+            if (type === 'image') {
+                modalBody.innerHTML = `<img src="${url}" class="max-w-full max-h-full object-contain rounded-lg">`;
+            } else if (type === 'video') {
+                modalBody.innerHTML = `<video controls src="${url}" class="max-w-full max-h-full rounded-lg" autoplay></video>`;
+            } else if (type === 'pdf') {
+                modalBody.innerHTML = `<iframe src="${url}" class="w-full h-full rounded-lg bg-white"></iframe>`;
+            }
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -317,21 +337,88 @@
                 text: `${title ? title + '\n' : ''}${text || ''}\n`,
                 url: url || window.location.href
             };
-            if (navigator.share) navigator.share(shareData).catch(() => {});
-            else window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareData.text + shareData.url)}`, '_blank');
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(() => {});
+            } else {
+                const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareData.text + shareData.url)}`;
+                window.open(waUrl, '_blank');
+            }
         };
 
-        loginForm.addEventListener('submit', (e) => {
+        userPhoneInput.addEventListener('input', () => {
+            if (pendingNewUserCheck) {
+                pendingNewUserCheck = false;
+                newUserFields.classList.add('hidden');
+                userNameInput.required = false;
+                submitBtnText.innerText = "आगे बढ़ें / लॉगिन करें";
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = userPhoneInput.value.trim();
-            const name = userNameInput.value.trim();
-            const gender = userGenderInput.value;
 
             if (phone.length !== 10) { alert('कृपया सही 10 अंकों का नंबर लिखें!'); return; }
 
-            const userData = { name, phone, gender };
-            localStorage.setItem('notification_user', JSON.stringify(userData));
-            showChatScreen(userData);
+            submitBtn.disabled = true;
+
+            try {
+                if (!pendingNewUserCheck) {
+                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> नंबर जांच रहे हैं...`;
+
+                    const userDocRef = doc(db, "users", phone);
+                    const docSnap = await getDoc(userDocRef);
+
+                    if (docSnap.exists()) {
+                        const userData = {
+                            name: docSnap.data().name || "यूज़र",
+                            phone: phone,
+                            gender: docSnap.data().gender || "Unspecified",
+                            lastLogin: new Date().toISOString()
+                        };
+
+                        await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+                        localStorage.setItem('notification_user', JSON.stringify(userData));
+                        showChatScreen(userData);
+                    } else {
+                        pendingNewUserCheck = true;
+                        newUserFields.classList.remove('hidden');
+                        userNameInput.required = true;
+                        submitBtnText.innerText = "अकाउंट बनाएँ और साइन इन करें";
+                    }
+                } else {
+                    const name = userNameInput.value.trim();
+                    const gender = userGenderInput.value;
+
+                    if (!name) { alert('कृपया अपना पूरा नाम लिखें!'); submitBtn.disabled = false; return; }
+
+                    submitBtnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> अकाउंट बन रहा है...`;
+
+                    const userDocRef = doc(db, "users", phone);
+                    let userData = { name, phone, gender, lastLogin: new Date().toISOString() };
+
+                    // ⚡ ATOMIC INCREMENT FOR STATS DOCUMENT (0 WASTED READS)
+                    await setDoc(userDocRef, {
+                        name,
+                        phone,
+                        gender,
+                        createdAt: serverTimestamp(),
+                        lastLogin: serverTimestamp()
+                    });
+
+                    // मेटाडेटा काउंटर बढ़ाओ (ताकि पुरा कलेक्शन न गिनना पड़े)
+                    const statsRef = doc(db, "metadata", "stats");
+                    await setDoc(statsRef, { totalUsers: increment(1) }, { merge: true });
+
+                    localStorage.setItem('notification_user', JSON.stringify(userData));
+                    showChatScreen(userData);
+                }
+            } catch (error) {
+                alert("लॉगिन/रजिस्ट्रेशन में त्रुटि: " + error.message);
+            } finally {
+                submitBtn.disabled = false;
+            }
         });
 
         const savedUser = JSON.parse(localStorage.getItem('notification_user'));
@@ -351,137 +438,299 @@
             }
 
             requestNotificationPermission();
-            loadNotificationsFromJSON();
+            loadTotalUsersCountOptimized();
+            syncMessagesWhatsAppStyle();
         }
 
-        // 🟢 100% ZERO READ ENGINE - डेटा केवल data.json से फेच होगा
-        async function loadNotificationsFromJSON() {
-            try {
-                const response = await fetch(`${JSON_URL}?t=${Date.now()}`);
-                if (!response.ok) throw new Error("JSON fetch failed");
+        // 🟢 0 READ COST - JSON COUNTER SYSTEM
+        async function loadTotalUsersCountOptimized() {
+            const cachedCount = localStorage.getItem('user_count_cache');
+            const lastFetchedTime = localStorage.getItem('user_count_last_fetched');
+            const now = Date.now();
+            const ONE_HOUR_MS = 60 * 60 * 1000;
 
-                const data = await response.json();
+            // 1. अगर लोकल स्टोरेज में काउंट उपलब्ध है, तो तुरंत दिखाओ (0 READ)
+            if (cachedCount) {
+                userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${cachedCount} Users`;
+            }
 
-                if (data.totalUsersCount !== undefined) {
-                    userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${data.totalUsersCount} Users`;
-                }
-
-                allNotificationsData = data.notifications || [];
-                renderFilteredNotifications();
-
-            } catch (err) {
-                messagesContainer.innerHTML = `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-exclamation-triangle text-2xl text-amber-500 mb-2"></i><br>'data.json' फ़ाइल नहीं मिली। कृपया एडमिन द्वारा पहला संदेश भेजें।</div>`;
+            // केवल 1 घंटे के बाद ही काउंटर डॉक्यूमेंट से सिर्फ '1 Read' लिया जाएगा
+            if (!lastFetchedTime || (now - parseInt(lastFetchedTime)) > ONE_HOUR_MS) {
+                try {
+                    const statsSnap = await getDoc(doc(db, "metadata", "stats"));
+                    if (statsSnap.exists()) {
+                        const count = statsSnap.data().totalUsers || 0;
+                        localStorage.setItem('user_count_cache', count);
+                        localStorage.setItem('user_count_last_fetched', now.toString());
+                        userCountBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${count} Users`;
+                    }
+                } catch (e) { console.error("Stats Count Error", e); }
             }
         }
 
-        // 🟢 LIKE TOGGLE (Local Storage - 0 Writes)
-        window.toggleLike = function(msgId) {
-            let myLikes = JSON.parse(localStorage.getItem('my_liked_ids')) || [];
-            if (myLikes.includes(msgId)) myLikes = myLikes.filter(id => id !== msgId);
-            else myLikes.push(msgId);
-            localStorage.setItem('my_liked_ids', JSON.stringify(myLikes));
+        // 🟢 WHATSAPP POSTMAN ARCHITECTURE (Delta Fetching + Seen Tracker)
+        function syncMessagesWhatsAppStyle() {
+            // Step 1: LocalStorage से डेटा तुरंत स्क्रीन पर दिखाओ (0 Read Cost)
+            const localCachedData = localStorage.getItem('cached_notifications');
+            if (localCachedData) {
+                try {
+                    allNotificationsData = JSON.parse(localCachedData);
+                    const spinner = document.getElementById('loading-spinner');
+                    if (spinner) spinner.remove();
+                    renderFilteredNotifications();
+                } catch(e) { console.error("Cache Read Error", e); }
+            }
+
+            // Step 2: पता लगाओ कि आख़िरी मैसेज किस टाइमस्टैम्प पर आया था
+            let lastTimestampMs = 0;
+            if (allNotificationsData.length > 0) {
+                const maxTime = Math.max(...allNotificationsData.map(item => item.timestampMs || 0));
+                if (maxTime > 0) lastTimestampMs = maxTime;
+            }
+
+            // Step 3: व्हाट्सएप सिंक - केवल वही मैसेज जो 'नये' हैं
+            let q;
+            if (lastTimestampMs > 0) {
+                const lastDate = new Date(lastTimestampMs);
+                const firestoreTimestamp = Timestamp.fromDate(lastDate);
+                q = query(
+                    collection(db, "notifications"), 
+                    where("timestamp", ">", firestoreTimestamp),
+                    orderBy("timestamp", "desc")
+                );
+            } else {
+                q = query(
+                    collection(db, "notifications"), 
+                    orderBy("timestamp", "desc"), 
+                    limit(15)
+                );
+            }
+
+            onSnapshot(q, (snapshot) => {
+                const spinner = document.getElementById('loading-spinner');
+                if (spinner) spinner.remove();
+
+                if (snapshot.empty) return;
+
+                const newFetchedData = [];
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    newFetchedData.push({
+                        id: docSnap.id,
+                        adminName: data.adminName || 'Admin Notification',
+                        title: data.title || '',
+                        message: data.message || '',
+                        mediaUrl: data.mediaUrl || null,
+                        mediaType: data.mediaType || 'none',
+                        fileName: data.fileName || '',
+                        likes: data.likes || [],
+                        seenBy: data.seenBy || [],
+                        timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
+                    });
+                });
+
+                newFetchedData.reverse();
+
+                const existingMap = new Map();
+                allNotificationsData.forEach(item => existingMap.set(item.id, item));
+                newFetchedData.forEach(item => existingMap.set(item.id, item));
+
+                allNotificationsData = Array.from(existingMap.values());
+                allNotificationsData.sort((a, b) => a.timestampMs - b.timestampMs);
+
+                // लोकल स्टोरेज में सेव करो
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                renderFilteredNotifications();
+            });
+        }
+
+        // 🟢 LIKE FUNCTION (LIKE TOGGLE)
+        window.toggleLike = async function(docId) {
+            if (!currentUser) return;
+            const userPhone = currentUser.phone;
+            const notificationDoc = allNotificationsData.find(item => item.id === docId);
+
+            if (!notificationDoc) return;
+
+            const isLiked = notificationDoc.likes && notificationDoc.likes.includes(userPhone);
+            const docRef = doc(db, "notifications", docId);
+
+            // Optimistic UI Update (बिना देरी तुरंत स्क्रीन पर बदलेगा)
+            if (isLiked) {
+                notificationDoc.likes = notificationDoc.likes.filter(id => id !== userPhone);
+                await updateDoc(docRef, { likes: arrayRemove(userPhone) });
+            } else {
+                if (!notificationDoc.likes) notificationDoc.likes = [];
+                notificationDoc.likes.push(userPhone);
+                await updateDoc(docRef, { likes: arrayUnion(userPhone) });
+            }
+
+            localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
             renderFilteredNotifications();
         };
 
-        // 🟢 SEEN TICK SYSTEM (Local Storage - 0 Writes)
-        function markAsSeen(msgId) {
-            let mySeen = JSON.parse(localStorage.getItem('my_seen_ids')) || [];
-            if (!mySeen.includes(msgId)) {
-                mySeen.push(msgId);
-                localStorage.setItem('my_seen_ids', JSON.stringify(mySeen));
+        // 🟢 MARK SEEN (AUTOMATIC DOUBLE TICK)
+        async function markAsSeen(docId) {
+            if (!currentUser) return;
+            const userPhone = currentUser.phone;
+            const notificationDoc = allNotificationsData.find(item => item.id === docId);
+
+            if (notificationDoc && (!notificationDoc.seenBy || !notificationDoc.seenBy.includes(userPhone))) {
+                if (!notificationDoc.seenBy) notificationDoc.seenBy = [];
+                notificationDoc.seenBy.push(userPhone);
+
+                const docRef = doc(db, "notifications", docId);
+                await updateDoc(docRef, { seenBy: arrayUnion(userPhone) });
+
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
                 renderFilteredNotifications();
             }
         }
 
         function renderFilteredNotifications() {
-            const spinner = document.getElementById('loading-spinner');
-            if (spinner) spinner.remove();
-
             messagesContainer.innerHTML = '';
+
             let dataToDisplay = [...allNotificationsData];
 
-            if (activeTab === 'recent') dataToDisplay = dataToDisplay.slice(-2);
-            else if (activeTab === 'media') dataToDisplay = dataToDisplay.filter(item => item.mediaUrl && item.mediaType !== 'none');
+            if (activeTab === 'recent') {
+                dataToDisplay = dataToDisplay.slice(-2);
+            } else if (activeTab === 'media') {
+                dataToDisplay = dataToDisplay.filter(item => item.mediaUrl && item.mediaType !== 'none');
+            }
 
             if (dataToDisplay.length === 0) {
-                messagesContainer.innerHTML = `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-folder-open text-3xl mb-2"></i><br>यहाँ कोई संदेश उपलब्ध नहीं है।</div>`;
+                messagesContainer.innerHTML = `<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-folder-open text-3xl mb-2"></i><br>यहाँ कोई फ़ाइल या संदेश उपलब्ध नहीं है।</div>`;
                 return;
             }
 
-            const myLikes = JSON.parse(localStorage.getItem('my_liked_ids')) || [];
-            const mySeen = JSON.parse(localStorage.getItem('my_seen_ids')) || [];
-
             dataToDisplay.forEach((data) => {
-                const msgId = data.id;
-                const msgTime = data.time || 'अभी';
-                const isLikedByMe = myLikes.includes(msgId);
-                const finalLikesCount = (data.likesCount || 0) + (isLikedByMe ? 1 : 0);
+                const docId = data.id;
+                const msgTime = data.timestampMs ? new Date(data.timestampMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'अभी';
+                const isAdmin = currentUser && currentUser.phone === ADMIN_PHONE_NUMBER;
 
-                const isSeenByMe = mySeen.includes(msgId);
-                const finalViewsCount = (data.viewsCount || 0) + (isSeenByMe ? 1 : 0);
+                // Likes logic
+                const likesList = data.likes || [];
+                const likeCount = likesList.length;
+                const isLikedByMe = currentUser && likesList.includes(currentUser.phone);
 
-                let tickHTML = `<i class="fas fa-check tick-gray text-[10px]"></i>`;
-                if (isSeenByMe) tickHTML = `<i class="fas fa-check-double tick-blue text-[11px]" title="देखा गया"></i>`;
+                // Seen logic (Ticks)
+                const seenList = data.seenBy || [];
+                const seenCount = seenList.length;
+                const isSeenByMe = currentUser && seenList.includes(currentUser.phone);
+
+                let tickHTML = `<i class="fas fa-check tick-gray text-[10px]" title="भेजा गया"></i>`;
+                if (seenCount > 0) {
+                    if (isSeenByMe) {
+                        tickHTML = `<i class="fas fa-check-double tick-blue text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
+                    } else {
+                        tickHTML = `<i class="fas fa-check-double tick-gray text-[11px]" title="${seenCount} यूज़र्स ने देखा"></i>`;
+                    }
+                }
 
                 let mediaHTML = '';
                 if (data.mediaType === 'image' && data.mediaUrl) {
-                    mediaHTML = `<div class="my-2 cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'image', '${data.fileName || 'Image'}')">
-                        <img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl border border-slate-200">
-                    </div>`;
+                    mediaHTML = `
+                        <div class="relative group my-2 cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'image', '${data.fileName || 'Image'}')">
+                            <img src="${data.mediaUrl}" class="w-full max-h-64 object-cover rounded-xl border border-slate-200">
+                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-xl text-white font-bold text-xs">
+                                <i class="fas fa-search-plus mr-1"></i> पूरा देखें
+                            </div>
+                        </div>`;
                 } else if (data.mediaType === 'video' && data.mediaUrl) {
-                    mediaHTML = `<div class="my-2"><video controls src="${data.mediaUrl}" class="w-full max-h-64 rounded-xl border border-slate-200"></video></div>`;
+                    mediaHTML = `
+                        <div class="my-2">
+                            <video controls src="${data.mediaUrl}" class="w-full max-h-64 rounded-xl border border-slate-200"></video>
+                            <button onclick="openMediaModal('${data.mediaUrl}', 'video', '${data.fileName || 'Video'}')" class="mt-1 text-[11px] text-teal-700 font-bold flex items-center">
+                                <i class="fas fa-expand mr-1"></i> फ़ुल स्क्रीन में देखें
+                            </button>
+                        </div>`;
                 } else if (data.mediaType === 'pdf' && data.mediaUrl) {
-                    mediaHTML = `<div class="flex items-center justify-between p-3 my-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs font-bold">
-                        <span class="truncate">${data.fileName || 'PDF Document'}</span>
-                        <a href="${data.mediaUrl}" download target="_blank" class="p-2 bg-emerald-600 text-white rounded-lg"><i class="fas fa-download"></i></a>
-                    </div>`;
+                    mediaHTML = `
+                        <div class="flex items-center justify-between p-3 my-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-bold">
+                            <div class="flex items-center truncate mr-2 cursor-pointer" onclick="openMediaModal('${data.mediaUrl}', 'pdf', '${data.fileName || 'PDF'}')">
+                                <i class="fas fa-file-pdf text-2xl text-emerald-600 mr-2"></i>
+                                <span class="truncate">${data.fileName || 'PDF Document'}</span>
+                            </div>
+                            <a href="${data.mediaUrl}" download target="_blank" class="p-2 bg-emerald-600 text-white rounded-lg text-[10px] hover:bg-emerald-700">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>`;
+                } else if (data.mediaType === 'file' && data.mediaUrl) {
+                    mediaHTML = `
+                        <div class="flex items-center justify-between p-3 my-2 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-800 font-bold">
+                            <div class="flex items-center truncate mr-2">
+                                <i class="fas fa-file-alt text-2xl text-blue-600 mr-2"></i>
+                                <span class="truncate">${data.fileName || 'Document File'}</span>
+                            </div>
+                            <a href="${data.mediaUrl}" download target="_blank" class="p-2 bg-blue-600 text-white rounded-lg text-[10px] hover:bg-blue-700">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>`;
                 }
 
                 messagesContainer.innerHTML += `
-                    <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 max-w-[95%] my-2 relative mx-auto">
+                    <div id="msg-${docId}" data-id="${docId}" class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 max-w-[95%] my-2 relative mx-auto">
                         <div class="text-xs font-bold text-teal-800 mb-1 flex justify-between items-center">
                             <span>📢 ${data.adminName || 'Admin Notification'}</span>
-                            <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-[10px] text-slate-400 font-normal">${msgTime}</span>
+                                ${isAdmin ? `<button onclick="deleteNotification('${docId}')" class="text-rose-500 hover:text-rose-700 text-xs ml-1"><i class="fas fa-trash-alt"></i></button>` : ''}
+                            </div>
                         </div>
                         
                         ${data.title ? `<h4 class="font-bold text-sm text-slate-900 mb-1">${data.title}</h4>` : ''}
                         <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">${formatMessageText(data.message)}</p>
+                        
                         ${mediaHTML}
 
+                        <!-- Action Bar (Likes, Seen, Share) -->
                         <div class="mt-2.5 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
                             <div class="flex items-center space-x-3">
-                                <button onclick="toggleLike('${msgId}')" class="flex items-center space-x-1 ${isLikedByMe ? 'like-btn-active' : 'text-slate-500'}">
+                                <!-- Like Button -->
+                                <button onclick="toggleLike('${docId}')" class="flex items-center space-x-1 ${isLikedByMe ? 'like-btn-active' : 'text-slate-500 hover:text-rose-600'} transition">
                                     <i class="${isLikedByMe ? 'fas' : 'far'} fa-heart text-sm"></i>
-                                    <span class="text-[11px]">${finalLikesCount}</span>
+                                    <span class="text-[11px]">${likeCount}</span>
                                 </button>
-                                <div class="flex items-center space-x-1 text-slate-400 text-[10px]">
+
+                                <!-- Seen Info Badge -->
+                                <div class="flex items-center space-x-1 text-slate-400 text-[10px]" title="${seenCount} यूज़र्स द्वारा देखा गया">
                                     <i class="fas fa-eye text-xs"></i>
-                                    <span>${finalViewsCount}</span>
+                                    <span>${seenCount}</span>
                                 </div>
                             </div>
+
                             <div class="flex items-center space-x-2">
-                                <button onclick="shareNotification('${data.title || ''}', '${data.message || ''}', '${data.mediaUrl || ''}')" class="text-teal-700 text-xs font-bold bg-teal-50 px-2 py-1 rounded-lg">
+                                <button onclick="shareNotification('${data.title || ''}', '${data.message || ''}', '${data.mediaUrl || ''}')" class="text-teal-700 hover:text-teal-900 text-xs font-bold flex items-center bg-teal-50 px-2 py-1 rounded-lg">
                                     <i class="fas fa-share-alt mr-1"></i> शेयर
                                 </button>
-                                ${tickHTML}
+                                <span class="ml-1">${tickHTML}</span>
                             </div>
                         </div>
                     </div>
                 `;
 
-                setTimeout(() => markAsSeen(msgId), 500);
+                // ऑटो-मार्क सीन जब मैसेज दिखे
+                setTimeout(() => markAsSeen(docId), 1000);
             });
 
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // 🟢 एडमिन सेंड मैसेज फंक्शन (Firebase में अपलोड + JSON एक्सपोर्ट अलर्ट)
+        window.deleteNotification = async function(docId) {
+            if (confirm("नोटिफिकेशन डिलीट करना चाहते हैं?")) {
+                await deleteDoc(doc(db, "notifications", docId));
+                allNotificationsData = allNotificationsData.filter(item => item.id !== docId);
+                localStorage.setItem('cached_notifications', JSON.stringify(allNotificationsData));
+                renderFilteredNotifications();
+            }
+        };
+
         if (sendBtn) {
             sendBtn.addEventListener('click', async () => {
                 const title = document.getElementById('admin-msg-title').value.trim();
                 const message = document.getElementById('admin-msg-body').value.trim();
 
-                if (!message && !selectedFile) { alert("कृपया सन्देश लिखें या फ़ाइल चुनें!"); return; }
+                if (!message && !selectedFile) { alert("कृपया सन्देश लिखें या गैलरी से फ़ाइल चुनें!"); return; }
 
                 sendBtn.disabled = true;
                 uploadProgress.classList.remove('hidden');
@@ -503,20 +752,17 @@
                         else mediaType = 'file';
                     }
 
-                    // 1. Firebase Firestore में बैकअप/अपलोड
-                    const newMsg = {
+                    await addDoc(collection(db, "notifications"), {
                         adminName: currentUser ? currentUser.name : "Admin",
                         title: title || "महत्वपूर्ण सूचना",
                         message: message,
                         mediaUrl: mediaUrl,
                         mediaType: mediaType,
                         fileName: fileName,
+                        likes: [],
+                        seenBy: [],
                         timestamp: serverTimestamp()
-                    };
-
-                    await addDoc(collection(db, "notifications"), newMsg);
-
-                    alert("✅ संदेश सफलतापूर्वक Firebase में पोस्ट हो गया है!\n\nअब यह संदेश आपके 'data.json' में जोड़ दिया जाएगा जिससे यूज़र्स के Reads 0 रहेंगे।");
+                    });
 
                     document.getElementById('admin-msg-title').value = '';
                     document.getElementById('admin-msg-body').value = '';
@@ -534,9 +780,19 @@
         logoutBtn.addEventListener('click', () => {
             if (confirm("लॉगआउट करना चाहते हैं?")) {
                 localStorage.removeItem('notification_user');
+                localStorage.removeItem('cached_notifications');
+                localStorage.removeItem('user_count_cache');
+                localStorage.removeItem('user_count_last_fetched');
                 location.reload();
             }
         });
     </script>
 </body>
 </html>
+'''
+
+output_path = "index.html"
+with open(output_path, "w", encoding="utf-8") as f:
+    f.write(html_code)
+
+print(f"File generated successfully: {output_path}")
