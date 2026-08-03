@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Outsource Dynamic Media Hub - Locked Notification Gate</title>
+    <title>Outsource Dynamic Media Hub - Modern Locked Gate</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -23,9 +23,23 @@
             height: 100vh;
             height: 100dvh;
         }
+
+        /* Lock Icon Pulse Indicator Animation */
+        @keyframes pointerPulse {
+            0% { transform: translateY(0); opacity: 1; }
+            50% { transform: translateY(-8px); opacity: 0.6; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .pointer-anim { animation: pointerPulse 1.2s infinite ease-in-out; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-800 app-height flex flex-col justify-center items-center font-sans overflow-hidden">
+<body class="bg-slate-900 text-slate-800 app-height flex flex-col justify-center items-center font-sans overflow-hidden relative">
+
+    <!-- Pointer Overlay showing where the lock icon is -->
+    <div id="lock-pointer-overlay" class="hidden fixed top-2 left-4 z-50 flex items-center space-x-2 bg-amber-400 text-slate-900 px-3 py-1.5 rounded-full font-bold text-xs shadow-2xl pointer-anim">
+        <i class="fas fa-arrow-up text-sm"></i>
+        <span>यहाँ 🔒 आइकन पर टैप करके Allow करें</span>
+    </div>
 
     <!-- App Container -->
     <div class="w-full max-w-md bg-white app-height sm:h-[720px] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border-0 sm:border sm:border-slate-700/50">
@@ -33,7 +47,7 @@
         <!-- 1. Phone Input Screen -->
         <div id="registration-screen" class="p-6 sm:p-8 flex flex-col justify-between h-full bg-slate-900 text-white overflow-y-auto">
             <div class="text-center mt-6 sm:mt-10">
-                <div class="w-20 h-20 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center mx-auto mb-4">
+                <div class="w-20 h-20 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-teal-500/10">
                     <i class="fas fa-comments text-3xl text-teal-400"></i>
                 </div>
                 <h2 class="text-2xl font-bold tracking-tight text-white">Outsource Connect</h2>
@@ -69,7 +83,6 @@
                     <div>
                         <h3 class="font-bold text-sm text-white leading-tight">MP Outsource Media Hub</h3>
                         <div class="flex items-center space-x-2 text-[11px] text-teal-200 mt-0.5">
-                            <!-- User Name / Add Name Button Container -->
                             <span id="user-display-name" class="font-bold"></span>
                             <button id="add-name-btn" onclick="promptAddName()" class="hidden bg-amber-400 hover:bg-amber-500 text-slate-900 font-extrabold px-2 py-0.5 rounded-full text-[10px] transition shadow">
                                 <i class="fas fa-user-plus mr-1"></i> + नाम दर्ज करें
@@ -171,7 +184,7 @@
             </div>
             <div>
                 <h3 class="font-bold text-lg text-slate-800">सूचनाएं (Notifications) चालू करें</h3>
-                <p class="text-xs text-slate-500 mt-1">लॉगिन पूरा करने और ग्रुप मैसेज प्राप्त करने के लिए नोटिफिकेशन अनुमति ऑन करना अनिवार्य है।</p>
+                <p class="text-xs text-slate-500 mt-1">लॉगिन पूरा करने और मैसेज प्राप्त करने के लिए अनुमति ऑन करना अनिवार्य है।</p>
             </div>
             <button onclick="requestNotifPermissionGate()" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 rounded-xl shadow text-sm transition flex items-center justify-center">
                 <i class="fas fa-check-circle mr-2"></i> Allow / नोटिफिकेशन ऑन करें
@@ -179,7 +192,7 @@
         </div>
     </div>
 
-    <!-- 🚫 2. Notification Blocked Instruction Modal (Unblock Steps) -->
+    <!-- 🚫 2. Notification Blocked Instruction Modal (Smart Direct Reset Helper) -->
     <div id="unblock-guide-modal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-left">
             <div class="text-center">
@@ -187,27 +200,29 @@
                     <i class="fas fa-bell-slash"></i>
                 </div>
                 <h3 class="font-bold text-base text-slate-800">नोटिफिकेशन ब्लॉक हैं!</h3>
-                <p class="text-xs text-rose-600 font-bold mt-1">लॉगिन करने के लिए इसे अनब्लॉक करें:</p>
+                <p class="text-xs text-rose-600 font-bold mt-1">लॉगिन करने के लिए सेटिंग्स में जाएँ:</p>
             </div>
 
             <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2.5 text-xs text-slate-700">
                 <div class="flex items-start space-x-2">
                     <span class="bg-teal-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
-                    <span>ऊपर एड्रेस बार में 🔒 (ताले) या साइट सेटिंग्स आइकन पर क्लिक करें।</span>
+                    <span>नीचे <strong>"साइट सेटिंग्स खोलें"</strong> दबाएँ या ऊपर एड्रेस बार में 🔒 आइकन टैप करें।</span>
                 </div>
                 <div class="flex items-start space-x-2">
                     <span class="bg-teal-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
-                    <span><strong>Notifications</strong> में जाकर <strong>Allow / Allow on this site</strong> चुनें।</span>
+                    <span><strong>Notifications / Permission</strong> में <strong>Reset / Allow</strong> करें।</span>
                 </div>
                 <div class="flex items-start space-x-2">
                     <span class="bg-teal-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
-                    <span>नीचे दिए गए <strong>"रीफ़्रेश करें"</strong> बटन पर क्लिक करें।</span>
+                    <span>वापस आते ही आपका लॉगिन <strong>ऑटोमैटिक</strong> पूरा हो जाएगा!</span>
                 </div>
             </div>
 
-            <button onclick="location.reload()" class="w-full bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow text-sm transition text-center block">
-                <i class="fas fa-sync-alt mr-2"></i> सेटिंग्स बदलने के बाद रीफ़्रेश करें
-            </button>
+            <div class="space-y-2">
+                <button onclick="openSystemSettingsOrGuide()" class="w-full bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow text-sm transition text-center flex items-center justify-center">
+                    <i class="fas fa-cog mr-2"></i> सेटिंग्स खोलें / गाइड देखें
+                </button>
+            </div>
         </div>
     </div>
 
@@ -303,6 +318,7 @@
         const seeMoreContainer = document.getElementById('see-more-container');
         const notifGateModal = document.getElementById('notif-gate-modal');
         const unblockGuideModal = document.getElementById('unblock-guide-modal');
+        const lockPointerOverlay = document.getElementById('lock-pointer-overlay');
 
         async function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
@@ -341,6 +357,13 @@
             filePreviewBar.classList.add('hidden');
         });
 
+        // AUTO-RESUME DETECTOR WHEN USER COMES BACK FROM SETTINGS
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && pendingPhone) {
+                checkNotificationAndProceed();
+            }
+        });
+
         // STEP 1: PHONE SUBMISSION GATE
         phoneAuthForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -361,6 +384,7 @@
             if (Notification.permission === 'granted') {
                 notifGateModal.classList.add('hidden');
                 unblockGuideModal.classList.add('hidden');
+                lockPointerOverlay.classList.add('hidden');
                 completeLoginFlow(pendingPhone);
             } else if (Notification.permission === 'denied') {
                 notifGateModal.classList.add('hidden');
@@ -369,6 +393,22 @@
                 notifGateModal.classList.remove('hidden');
             }
         }
+
+        window.openSystemSettingsOrGuide = function() {
+            lockPointerOverlay.classList.remove('hidden');
+            
+            // Native App Intent Trigger for Android App / WebView Settings
+            try {
+                if (window.Android && window.Android.openNotificationSettings) {
+                    window.Android.openNotificationSettings();
+                } else {
+                    // Flash Pointer to upper address bar
+                    setTimeout(() => {
+                        lockPointerOverlay.classList.add('hidden');
+                    }, 6000);
+                }
+            } catch (e) {}
+        };
 
         window.requestNotifPermissionGate = function() {
             Notification.requestPermission().then(permission => {
