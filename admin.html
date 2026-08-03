@@ -25,8 +25,10 @@
                 <p class="text-xs text-slate-400">Outsource Dynamic Media Network</p>
             </div>
         </div>
-        <div id="logged-admin-info" class="hidden items-center space-x-4">
-            <span id="admin-phone-display" class="text-xs bg-slate-800 px-3 py-1.5 rounded-full text-amber-400 font-mono font-bold"></span>
+        <div id="logged-admin-info" class="hidden items-center space-x-3">
+            <button onclick="openChangePasswordModal()" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-400 font-mono font-bold px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                <i class="fas fa-key mr-1"></i> पासवर्ड बदलें
+            </button>
             <button onclick="adminLogout()" class="text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg transition">
                 <i class="fas fa-sign-out-alt mr-1"></i> लॉगआउट
             </button>
@@ -37,17 +39,22 @@
     <div id="admin-login-screen" class="max-w-md mx-auto my-12 p-6 bg-white rounded-2xl shadow-xl border border-slate-200">
         <div class="text-center mb-6">
             <i class="fas fa-lock text-4xl text-teal-700 mb-2"></i>
-            <h2 class="text-xl font-bold text-slate-800">एडमिन सत्यापन (Admin Login)</h2>
-            <p class="text-xs text-slate-500 mt-1">पोर्टल तक पहुँचने के लिए पंजीकृत एडमिन नंबर दर्ज करें</p>
+            <h2 class="text-xl font-bold text-slate-800">एडमिन लॉगिन (Admin Login)</h2>
+            <p class="text-xs text-slate-500 mt-1">पोर्टल तक पहुँचने के लिए ID व Password दर्ज करें</p>
         </div>
         <form id="admin-auth-form" class="space-y-4">
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">मोबाइल नंबर (10 अंक)</label>
-                <input type="tel" id="auth-admin-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="जैसे: 9993332211" 
+                <label class="block text-xs font-bold text-slate-600 mb-1">लॉगिन ID (मोबाइल नंबर)</label>
+                <input type="tel" id="auth-admin-id" pattern="[0-9]{10}" maxlength="10" required placeholder="जैसे: 8085112773" 
                        class="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-600 focus:outline-none font-mono">
             </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">पासवर्ड (Password)</label>
+                <input type="password" id="auth-admin-password" required placeholder="पासवर्ड दर्ज करें" 
+                       class="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-600 focus:outline-none">
+            </div>
             <button type="submit" id="auth-btn" class="w-full bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow text-sm transition">
-                डैशबोर्ड खोलें <i class="fas fa-arrow-right ml-2"></i>
+                लॉगिन करें <i class="fas fa-arrow-right ml-2"></i>
             </button>
         </form>
     </div>
@@ -74,7 +81,7 @@
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
                 <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0"><i class="fas fa-photo-video"></i></div>
                 <div>
-                    <p class="text-xs font-bold text-slate-400">मीडिया पोस्ट फ़ाइलें</p>
+                    <p class="text-xs font-bold text-slate-400">मीडिया फ़ाइलें</p>
                     <h3 id="stat-total-media" class="text-2xl font-extrabold text-slate-800">0</h3>
                 </div>
             </div>
@@ -84,14 +91,16 @@
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-bold text-sm text-slate-800 flex items-center">
-                    <i class="fas fa-user-plus text-teal-700 mr-2"></i> नए एडमिन पंजीकृत या प्रबंधित करें
+                    <i class="fas fa-user-plus text-teal-700 mr-2"></i> नया एडमिन जोड़ें
                 </h3>
             </div>
             
             <form id="add-admin-form" class="flex flex-col sm:flex-row gap-3">
-                <input type="tel" id="new-admin-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का एडमिन नंबर लिखें" 
+                <input type="tel" id="new-admin-phone" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का ID/नंबर" 
                        class="px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-none flex-1 font-mono">
-                <input type="text" id="new-admin-name" required placeholder="एडमिन का नाम (जैसे: रोशन प्रजापति)" 
+                <input type="text" id="new-admin-name" required placeholder="एडमिन का नाम" 
+                       class="px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-none flex-1">
+                <input type="text" id="new-admin-pass" required placeholder="पासवर्ड रखें" 
                        class="px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-teal-600 focus:outline-none flex-1">
                 <button type="submit" class="bg-teal-700 hover:bg-teal-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow transition shrink-0">
                     <i class="fas fa-plus mr-1"></i> एडमिन जोड़ें
@@ -103,9 +112,9 @@
                 <table class="w-full text-left text-xs text-slate-600">
                     <thead class="bg-slate-100 text-slate-700 font-bold uppercase border-b">
                         <tr>
-                            <th class="p-2.5">मोबाइल नंबर</th>
+                            <th class="p-2.5">लॉगइन ID / मोबाइल</th>
                             <th class="p-2.5">एडमिन का नाम</th>
-                            <th class="p-2.5">कुल संदेश पोस्ट</th>
+                            <th class="p-2.5">कुल पोस्ट</th>
                             <th class="p-2.5 text-right">एक्शन</th>
                         </tr>
                     </thead>
@@ -119,9 +128,14 @@
         <!-- Messages Manager Panel -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
-                <h3 class="font-bold text-sm text-slate-800 flex items-center">
-                    <i class="fas fa-comments text-teal-700 mr-2"></i> सभी पोस्ट संदेश (Search & Manage)
-                </h3>
+                <div class="flex items-center space-x-3">
+                    <h3 class="font-bold text-sm text-slate-800 flex items-center">
+                        <i class="fas fa-comments text-teal-700 mr-2"></i> सभी मैसेज
+                    </h3>
+                    <button id="bulk-delete-btn" onclick="deleteSelectedMessages()" class="hidden bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow">
+                        <i class="fas fa-trash-alt mr-1"></i> चयनित मैसेज डिलीट करें
+                    </button>
+                </div>
                 
                 <!-- Live Search Bar -->
                 <div class="relative w-full sm:w-72">
@@ -136,12 +150,15 @@
                 <table class="w-full text-left text-xs text-slate-600">
                     <thead class="bg-slate-100 text-slate-700 font-bold uppercase border-b">
                         <tr>
+                            <th class="p-2.5 text-center w-10">
+                                <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" class="w-4 h-4 text-teal-600 rounded cursor-pointer">
+                            </th>
                             <th class="p-2.5">तारीख/समय</th>
                             <th class="p-2.5">एडमिन</th>
                             <th class="p-2.5">शीर्षक व कंटेंट</th>
                             <th class="p-2.5">मीडिया</th>
                             <th class="p-2.5">सीन (Eyes)</th>
-                            <th class="p-2.5 text-right">नियंत्रण (Action)</th>
+                            <th class="p-2.5 text-right">एक्शन</th>
                         </tr>
                     </thead>
                     <tbody id="messages-table-body" class="divide-y">
@@ -153,12 +170,29 @@
 
     </div>
 
+    <!-- Password Change Modal -->
+    <div id="password-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center">
+                <i class="fas fa-key text-teal-700 mr-2"></i> पासवर्ड बदलें
+            </h3>
+            <div>
+                <label class="text-xs font-bold text-slate-600 block mb-1">नया पासवर्ड लिखें</label>
+                <input type="password" id="new-password-input" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600">
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closePasswordModal()" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">रद्द करें</button>
+                <button onclick="saveNewPassword()" class="px-4 py-1.5 bg-teal-700 text-white rounded-lg text-xs font-bold">सेव करें</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase v10 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
-            getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, 
-            query, orderBy, onSnapshot, updateDoc, getDocs 
+            getFirestore, collection, doc, getDoc, setDoc, deleteDoc, 
+            query, orderBy, onSnapshot, updateDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -178,42 +212,48 @@
         let cachedNotifications = [];
 
         const authForm = document.getElementById('admin-auth-form');
-        const authAdminPhoneInput = document.getElementById('auth-admin-phone');
         const loginScreen = document.getElementById('admin-login-screen');
         const dashboardScreen = document.getElementById('admin-dashboard');
         const loggedAdminInfo = document.getElementById('logged-admin-info');
-        const adminPhoneDisplay = document.getElementById('admin-phone-display');
 
-        // Check Local Storage Admin Session
+        // Check Saved Session
         const savedAdmin = localStorage.getItem('master_admin_phone');
         if (savedAdmin) {
-            verifyAndLoginAdmin(savedAdmin);
+            activeAdminPhone = savedAdmin;
+            showDashboard();
         }
 
+        // LOGIN AUTH
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const phone = authAdminPhoneInput.value.trim();
-            if (phone.length !== 10) { alert('सही 10 अंकों का नंबर दर्ज करें!'); return; }
-            await verifyAndLoginAdmin(phone);
-        });
+            const phone = document.getElementById('auth-admin-id').value.trim();
+            const password = document.getElementById('auth-admin-password').value.trim();
 
-        async function verifyAndLoginAdmin(phone) {
             const adminDocRef = doc(db, "admins", phone);
             const docSnap = await getDoc(adminDocRef);
 
             if (docSnap.exists()) {
-                activeAdminPhone = phone;
-                localStorage.setItem('master_admin_phone', phone);
-                loginScreen.classList.add('hidden');
-                dashboardScreen.classList.remove('hidden');
-                loggedAdminInfo.classList.remove('hidden');
-                loggedAdminInfo.classList.add('flex');
-                adminPhoneDisplay.innerText = `Admin: ${phone}`;
-                
-                loadDashboardData();
+                const data = docSnap.data();
+                const validPass = data.password || data.phone; // Fallback to phone if pass not set
+
+                if (password === validPass) {
+                    activeAdminPhone = phone;
+                    localStorage.setItem('master_admin_phone', phone);
+                    showDashboard();
+                } else {
+                    alert("गलत पासवर्ड!");
+                }
             } else {
-                alert("यह नंबर एडमिन लिस्ट में पंजीकृत नहीं है!");
+                alert("यह एडमिन ID मौजूद नहीं है!");
             }
+        });
+
+        function showDashboard() {
+            loginScreen.classList.add('hidden');
+            dashboardScreen.classList.remove('hidden');
+            loggedAdminInfo.classList.remove('hidden');
+            loggedAdminInfo.classList.add('flex');
+            loadDashboardData();
         }
 
         window.adminLogout = function() {
@@ -221,9 +261,7 @@
             location.reload();
         };
 
-        // Load Realtime Admins & Notifications Data
         function loadDashboardData() {
-            // Realtime Admins Sync
             onSnapshot(collection(db, "admins"), (snapshot) => {
                 cachedAdmins = [];
                 snapshot.forEach(docSnap => {
@@ -232,7 +270,6 @@
                 renderAdminsTable();
             });
 
-            // Realtime Notifications Sync
             const q = query(collection(db, "notifications"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
                 cachedNotifications = [];
@@ -245,7 +282,6 @@
                         message: data.message || '',
                         mediaUrl: data.mediaUrl || null,
                         mediaType: data.mediaType || 'none',
-                        fileName: data.fileName || '',
                         seenBy: data.seenBy || [],
                         timestampMs: data.timestamp ? data.timestamp.toDate().getTime() : Date.now()
                     });
@@ -263,7 +299,6 @@
             document.getElementById('stat-total-media').innerText = mediaCount;
         }
 
-        // Render Admins Management List
         function renderAdminsTable() {
             const tbody = document.getElementById('admin-table-body');
             tbody.innerHTML = '';
@@ -275,9 +310,12 @@
                         <td class="p-2.5 font-mono font-bold text-teal-800">${admin.phone}</td>
                         <td class="p-2.5 font-bold">${admin.name || 'Admin'}</td>
                         <td class="p-2.5"><span class="bg-teal-100 text-teal-800 px-2 py-0.5 rounded font-bold">${count} मैसेज</span></td>
-                        <td class="p-2.5 text-right">
+                        <td class="p-2.5 text-right space-x-1">
+                            <button onclick="editAdminDetails('${admin.phone}', '${admin.name || ''}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                                <i class="fas fa-edit mr-1"></i> सुधारें
+                            </button>
                             <button onclick="deleteAdmin('${admin.phone}')" class="text-rose-600 hover:text-rose-800 font-bold text-xs bg-rose-50 px-2 py-1 rounded border border-rose-200">
-                                <i class="fas fa-user-minus mr-1"></i> रिमूव करें
+                                <i class="fas fa-user-minus mr-1"></i> हटाएँ
                             </button>
                         </td>
                     </tr>
@@ -285,54 +323,77 @@
             });
         }
 
-        // Add Admin Logic
+        // ADD NEW ADMIN
         document.getElementById('add-admin-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = document.getElementById('new-admin-phone').value.trim();
             const name = document.getElementById('new-admin-name').value.trim();
+            const pass = document.getElementById('new-admin-pass').value.trim();
 
             if (phone.length !== 10) { alert("10 अंकों का नंबर लिखें!"); return; }
 
             await setDoc(doc(db, "admins", phone), {
                 name: name,
+                password: pass,
                 role: "admin",
                 createdAt: new Date().toISOString()
             });
 
-            alert(`एडमिन ${name} (${phone}) सफलतापूर्वक जोड़ा गया!`);
+            alert(`एडमिन ${name} जोड़ा गया!`);
             document.getElementById('new-admin-phone').value = '';
             document.getElementById('new-admin-name').value = '';
+            document.getElementById('new-admin-pass').value = '';
         });
 
-        // Delete Admin
+        // EDIT ADMIN (Name/Phone Update)
+        window.editAdminDetails = async function(oldPhone, currentName) {
+            const newName = prompt("नया एडमिन नाम लिखें:", currentName);
+            const newPhone = prompt("नया 10-अंकी मोबाइल नंबर (ID) लिखें:", oldPhone);
+
+            if (newName && newPhone && newPhone.length === 10) {
+                if (newPhone !== oldPhone) {
+                    const oldDoc = await getDoc(doc(db, "admins", oldPhone));
+                    if (oldDoc.exists()) {
+                        const data = oldDoc.data();
+                        data.name = newName;
+                        await setDoc(doc(db, "admins", newPhone), data);
+                        await deleteDoc(doc(db, "admins", oldPhone));
+                    }
+                } else {
+                    await updateDoc(doc(db, "admins", oldPhone), { name: newName });
+                }
+                alert("एडमिन जानकारी अपडेट हो गई!");
+            }
+        };
+
         window.deleteAdmin = async function(phone) {
-            if (confirm(`क्या आप एडमिन ${phone} के अधिकार हटाना चाहते हैं?`)) {
+            if (confirm(`क्या आप एडमिन ${phone} को हटाना चाहते हैं?`)) {
                 await deleteDoc(doc(db, "admins", phone));
             }
         };
 
-        // Render Messages Table with Filter
+        // RENDER MESSAGES WITH CHECKBOX
         function renderMessagesTable(list) {
             const tbody = document.getElementById('messages-table-body');
             tbody.innerHTML = '';
 
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">कोई डेटा नहीं मिला</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">कोई डेटा नहीं मिला</td></tr>`;
                 return;
             }
 
             list.forEach(msg => {
                 const dateStr = new Date(msg.timestampMs).toLocaleString('hi-IN', { dateStyle: 'short', timeStyle: 'short' });
-                
                 let mediaBadge = '<span class="text-slate-400 text-[10px]">कोई नहीं</span>';
                 if (msg.mediaType !== 'none') {
-                    mediaBadge = `<a href="${msg.mediaUrl}" target="_blank" class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold text-[10px] flex items-center w-max">
-                        <i class="fas fa-paperclip mr-1"></i> ${msg.mediaType.toUpperCase()}
-                    </a>`;
+                    mediaBadge = `<a href="${msg.mediaUrl}" target="_blank" class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold text-[10px]"><i class="fas fa-paperclip mr-1"></i> ${msg.mediaType.toUpperCase()}</a>`;
                 }
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50">
+                        <td class="p-2.5 text-center">
+                            <input type="checkbox" value="${msg.id}" onchange="updateBulkDeleteButton()" class="msg-checkbox w-4 h-4 text-teal-600 rounded cursor-pointer">
+                        </td>
                         <td class="p-2.5 whitespace-nowrap text-slate-500 font-mono text-[11px]">${dateStr}</td>
                         <td class="p-2.5 font-bold text-teal-800">${msg.adminName}</td>
                         <td class="p-2.5">
@@ -342,19 +403,46 @@
                         <td class="p-2.5">${mediaBadge}</td>
                         <td class="p-2.5 font-bold"><i class="fas fa-eye text-teal-600 mr-1"></i> ${(msg.seenBy || []).length}</td>
                         <td class="p-2.5 text-right space-x-1 whitespace-nowrap">
-                            <button onclick="editMsgModal('${msg.id}', \`${msg.title}\`, \`${msg.message}\`)" class="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded border border-blue-200 font-bold">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button onclick="deleteMsg('${msg.id}')" class="text-rose-600 hover:text-rose-800 bg-rose-50 px-2 py-1 rounded border border-rose-200 font-bold">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button onclick="editMsgModal('${msg.id}', \`${msg.title}\`, \`${msg.message}\`)" class="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded border border-blue-200 font-bold"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteMsg('${msg.id}')" class="text-rose-600 hover:text-rose-800 bg-rose-50 px-2 py-1 rounded border border-rose-200 font-bold"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        // Live Search Filter Function
+        // SELECT ALL CHECKBOXES
+        window.toggleSelectAll = function(master) {
+            const checkboxes = document.querySelectorAll('.msg-checkbox');
+            checkboxes.forEach(cb => cb.checked = master.checked);
+            updateBulkDeleteButton();
+        };
+
+        window.updateBulkDeleteButton = function() {
+            const selected = document.querySelectorAll('.msg-checkbox:checked');
+            const bulkBtn = document.getElementById('bulk-delete-btn');
+            if (selected.length > 0) {
+                bulkBtn.innerText = `चयनित (${selected.length}) मैसेज डिलीट करें`;
+                bulkBtn.classList.remove('hidden');
+            } else {
+                bulkBtn.classList.add('hidden');
+            }
+        };
+
+        // BULK DELETE MESSAGES
+        window.deleteSelectedMessages = async function() {
+            const selected = document.querySelectorAll('.msg-checkbox:checked');
+            if (selected.length === 0) return;
+
+            if (confirm(`क्या आप चुने गए ${selected.length} मैसेज एक साथ डिलीट करना चाहते हैं?`)) {
+                for (let cb of selected) {
+                    await deleteDoc(doc(db, "notifications", cb.value));
+                }
+                document.getElementById('select-all-checkbox').checked = false;
+                updateBulkDeleteButton();
+            }
+        };
+
         window.filterMessages = function() {
             const queryText = document.getElementById('search-msg-input').value.toLowerCase().trim();
             const filtered = cachedNotifications.filter(msg => 
@@ -365,25 +453,37 @@
             renderMessagesTable(filtered);
         };
 
-        // Delete Message
         window.deleteMsg = async function(id) {
-            if (confirm("क्या आप यह मैसेज पूरी तरह से डिलीट करना चाहते हैं?")) {
+            if (confirm("मैसेज डिलीट करना चाहते हैं?")) {
                 await deleteDoc(doc(db, "notifications", id));
             }
         };
 
-        // Edit Message
         window.editMsgModal = async function(id, currentTitle, currentMsg) {
             const newTitle = prompt("नया शीर्षक लिखें:", currentTitle);
             const newBody = prompt("नया सन्देश लिखें:", currentMsg);
-
             if (newTitle !== null && newBody !== null) {
                 await updateDoc(doc(db, "notifications", id), {
                     title: newTitle.trim(),
                     message: newBody.trim()
                 });
-                alert("मैसेज संशोधित हो गया!");
             }
+        };
+
+        // CHANGE PASSWORD MODAL
+        window.openChangePasswordModal = function() {
+            document.getElementById('password-modal').classList.remove('hidden');
+        };
+        window.closePasswordModal = function() {
+            document.getElementById('password-modal').classList.add('hidden');
+        };
+        window.saveNewPassword = async function() {
+            const newPass = document.getElementById('new-password-input').value.trim();
+            if (!newPass) { alert("पासवर्ड भरें!"); return; }
+
+            await updateDoc(doc(db, "admins", activeAdminPhone), { password: newPass });
+            alert("पासवर्ड सफलतापूर्वक बदल गया!");
+            closePasswordModal();
         };
     </script>
 </body>
