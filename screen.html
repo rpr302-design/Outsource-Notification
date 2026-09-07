@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LED Ad System - Admin Panel</title>
+  
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { background-color: #f1f5f9; color: #1e293b; padding: 20px; }
+
+    header {
+      background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+      color: white;
+      padding: 20px 30px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+    }
+    header h1 { font-size: 22px; font-weight: 700; }
+    #headerDate { font-size: 14px; opacity: 0.9; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 5px solid #3b82f6;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .stat-card.green { border-left-color: #10b981; }
+    .stat-card.purple { border-left-color: #8b5cf6; }
+    .stat-card.orange { border-left-color: #f59e0b; }
+    .stat-card h3 { font-size: 13px; color: #64748b; margin-bottom: 6px; text-transform: uppercase; }
+    .stat-card .val { font-size: 26px; font-weight: bold; color: #0f172a; }
+
+    .filter-bar {
+      background: white;
+      padding: 18px 25px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-size: 13px; font-weight: 600; color: #475569; }
+    .filter-group input, .filter-group select {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+    .btn-reset {
+      background: #e2e8f0;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #334155;
+    }
+    .btn-reset:hover { background: #cbd5e1; }
+
+    .table-container {
+      background: white;
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 700;
+      padding: 14px 16px;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    tr:hover { background: #f8fafc; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .badge-approved { background: #dcfce7; color: #15803d; }
+    .badge-pending { background: #fef3c7; color: #b45309; }
+
+    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-verify { background: #10b981; color: white; }
+    .btn-verify:hover { background: #059669; }
+    .btn-view { background: #0284c7; color: white; text-decoration: none; }
+    .btn-view:hover { background: #0369a1; }
+    .btn-del-drive { background: #f97316; color: white; }
+    .btn-del-drive:hover { background: #ea580c; }
+    .btn-del-record { background: #ef4444; color: white; }
+    .btn-del-record:hover { background: #dc2626; }
+    .btn-disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed !important; }
+
+    .mini-thumb {
+      width: 45px;
+      height: 45px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+    }
+
+    #loadingText {
+      text-align: center;
+      padding: 30px;
+      color: #64748b;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>🏙️ एलईडी स्क्रीन - केंद्रीय एडमिन नियंत्रण कक्ष</h1>
+      <small>बुकिंग, भुगतान, फोटो सत्यापन व गोशवारा प्रबंधन</small>
+    </div>
+    <div id="headerDate">--/--/----</div>
+  </header>
+
+  <!-- गोशवारा (Monthly / Overall Summary) -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <h3>कुल विज्ञापन</h3>
+      <div class="val" id="totalCount">0</div>
+    </div>
+    <div class="stat-card green">
+      <h3>कुल जमा राशि</h3>
+      <div class="val" id="totalRevenue">₹0</div>
+    </div>
+    <div class="stat-card purple">
+      <h3>इस माह का गोशवारा</h3>
+      <div class="val" id="monthRevenue">₹0</div>
+      <small style="color:#64748b;" id="monthCount">0 विज्ञापन</small>
+    </div>
+    <div class="stat-card orange">
+      <h3>आज के सक्रिय विज्ञापन</h3>
+      <div class="val" id="todayCount">0</div>
+    </div>
+  </div>
+
+  <!-- फ़िल्टर बार -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>तारीख से खोजें:</label>
+      <input type="date" id="filterDate" onchange="applyFilters()">
+    </div>
+    <div class="filter-group">
+      <label>माह चुनें:</label>
+      <input type="month" id="filterMonth" onchange="applyFilters()">
+    </div>
+    <div class="filter-group">
+      <label>स्थिति:</label>
+      <select id="filterStatus" onchange="applyFilters()">
+        <option value="ALL">सभी</option>
+        <option value="Approved">स्वीकृत (Approved)</option>
+        <option value="Pending Approval">लंबित (Pending)</option>
+      </select>
+    </div>
+    <button class="btn-reset" onclick="resetFilters()">🔄 सभी दिखाएँ</button>
+  </div>
+
+  <!-- डेटा टेबल -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>मीडिया</th>
+          <th>ग्राहक का नाम</th>
+          <th>मोबाइल</th>
+          <th>श्रेणी</th>
+          <th>प्रदर्शन तारीख</th>
+          <th>राशि (₹)</th>
+          <th>स्थिति</th>
+          <th>कार्रवाई (नियंत्रण)</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr>
+          <td colspan="8" id="loadingText">डेटाबेस से रिकॉर्ड लोड हो रहे हैं...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // 🟢 आपका नया लाइव Google Apps Script URL
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCy_TCbcsd7XMCCUtw8RwFkv-2w4zGzRi99bjlc2hGWuE6JfORt2qq_KeIGPECopee/exec";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDkQzYzWk1COIxNmd_VGqfHRsRtf9sOz8A",
+      authDomain: "push-notifaction-c3460.firebaseapp.com",
+      projectId: "push-notifaction-c3460",
+      messagingSenderId: "649136234508",
+      appId: "1:649136234508:web:39b8e06150890d360ace29",
+      measurementId: "G-5W02WYP1ZT"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let allBookings = [];
+
+    function getTodayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    document.getElementById("headerDate").innerText = "आज: " + new Date().toLocaleDateString('hi-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    function extractId(d) {
+      if (d.driveFileId && d.driveFileId.length > 5) return d.driveFileId;
+      const str = d.driveFileUrl || d.fileUrl || "";
+      const m = str.match(/\/d\/([a-zA-Z0-9_-]+)/) || str.match(/id=([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : null;
+    }
+
+    function loadData() {
+      db.collection("screen_bookings")
+        .orderBy("bookingTimestamp", "desc")
+        .onSnapshot((snapshot) => {
+          allBookings = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            data.id = doc.id;
+            data.fileId = extractId(data);
+            allBookings.push(data);
+          });
+
+          updateDashboardCounters(allBookings);
+          renderTable(allBookings);
+        }, (err) => {
+          console.error("Firestore Error:", err);
+          document.getElementById("loadingText").innerText = "डेटा लोड त्रुटि: " + err.message;
+        });
+    }
+
+    function updateDashboardCounters(list) {
+      let totalRev = 0;
+      let monthRev = 0;
+      let monthCnt = 0;
+      let todayCnt = 0;
+
+      const todayStr = getTodayStr();
+      const currentMonthStr = todayStr.substring(0, 7);
+
+      list.forEach(item => {
+        const amt = Number(item.amountPaid) || 0;
+        totalRev += amt;
+
+        if (item.displayDate && item.displayDate.startsWith(currentMonthStr)) {
+          monthRev += amt;
+          monthCnt++;
+        }
+
+        if (item.displayDate === todayStr) {
+          todayCnt++;
+        }
+      });
+
+      document.getElementById("totalCount").innerText = list.length;
+      document.getElementById("totalRevenue").innerText = "₹" + totalRev.toLocaleString('en-IN');
+      document.getElementById("monthRevenue").innerText = "₹" + monthRev.toLocaleString('en-IN');
+      document.getElementById("monthCount").innerText = `${monthCnt} विज्ञापन`;
+      document.getElementById("todayCount").innerText = todayCnt;
+    }
+
+    function renderTable(list) {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:25px; color:#64748b;">कोई विज्ञापन रिकॉर्ड नहीं मिला।</td></tr>`;
+        return;
+      }
+
+      list.forEach(item => {
+        const tr = document.createElement("tr");
+        const isApproved = item.status === "Approved";
+        const hasDriveFile = Boolean(item.fileId);
+
+        const thumbSrc = hasDriveFile ? `https://drive.google.com/thumbnail?id=${item.fileId}&sz=w100` : 'https://via.placeholder.com/45?text=No+Img';
+        const fullViewUrl = hasDriveFile ? `https://drive.google.com/file/d/${item.fileId}/preview` : '#';
+
+        tr.innerHTML = `
+          <td>
+            <img src="${thumbSrc}" class="mini-thumb" onerror="this.src='https://via.placeholder.com/45?text=Media'">
+          </td>
+          <td><strong>${item.customerName || 'N/A'}</strong></td>
+          <td>${item.mobileNumber || 'N/A'}</td>
+          <td>${item.category || 'विशेष'}</td>
+          <td><strong>${item.displayDate || 'N/A'}</strong></td>
+          <td>₹${item.amountPaid || 0}</td>
+          <td>
+            <span class="status-badge ${isApproved ? 'badge-approved' : 'badge-pending'}">
+              ${isApproved ? 'स्वीकृत' : 'लंबित'}
+            </span>
+          </td>
+          <td>
+            <div class="action-btns">
+              ${hasDriveFile ? `<a href="${fullViewUrl}" target="_blank" class="btn btn-view">👁️ देखें</a>` : ''}
+
+              <button class="btn btn-verify" onclick="toggleStatus('${item.id}', '${item.status}')">
+                ${isApproved ? '⏸️ रोकें' : '✅ पास करें'}
+              </button>
+
+              <button class="btn btn-del-drive ${!hasDriveFile ? 'btn-disabled' : ''}" 
+                onclick="deleteFromDriveOnly('${item.id}', '${item.fileId}')" 
+                ${!hasDriveFile ? 'disabled' : ''} 
+                title="Google Drive से फ़ोटो डिलीट होगी लेकिन रिकॉर्ड बचेगा">
+                🗑️ Drive फ़ोटो हटाएँ
+              </button>
+
+              <button class="btn btn-del-record" onclick="deleteFullBooking('${item.id}', '${item.fileId}')" title="डेटाबेस और Drive दोनों से मिटाएँ">
+                ❌ पूरा रिकॉर्ड हटाएँ
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleStatus(docId, currentStatus) {
+      const newStatus = currentStatus === "Approved" ? "Pending Approval" : "Approved";
+      db.collection("screen_bookings").doc(docId).update({ status: newStatus });
+    }
+
+    function deleteFromDriveOnly(docId, fileId) {
+      if (!fileId) return alert("फ़ाइल ID नहीं मिली।");
+      if (!confirm("क्या आप वाकई इस फ़ोटो को Google Drive से हटाना चाहते हैं?\n(डेटाबेस में ग्राहक का विवरण और पेमेंट रिकॉर्ड सुरक्षित रहेगा)")) return;
+
+      fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "deleteDriveFile", fileId: fileId })
+      })
+      .then(res => res.json())
+      .then(resData => {
+        if (resData.status === "success") {
+          db.collection("screen_bookings").doc(docId).update({
+            driveFileId: null,
+            driveFileUrl: null
+          }).then(() => alert("सफल! Google Drive से फ़ोटो हटा दी गई है।"));
+        } else {
+          alert("Drive त्रुटि: " + resData.message);
+        }
+      })
+      .catch(err => alert("त्रुटि: " + err.message));
+    }
+
+    function deleteFullBooking(docId, fileId) {
+      if (!confirm("सावधानी: यह कार्रवाई इस बुकिंग को डेटाबेस और Drive दोनों से हमेशा के लिए मिटा देगी।")) return;
+
+      if (fileId) {
+        fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "deleteDriveFile", fileId: fileId })
+        });
+      }
+
+      db.collection("screen_bookings").doc(docId).delete()
+        .then(() => alert("रिकॉर्ड सफलतापूर्वक हटा दिया गया।"));
+    }
+
+    function applyFilters() {
+      const sDate = document.getElementById("filterDate").value;
+      const sMonth = document.getElementById("filterMonth").value;
+      const sStatus = document.getElementById("filterStatus").value;
+
+      let filtered = allBookings.filter(item => {
+        let mDate = true, mMonth = true, mStatus = true;
+        if (sDate && item.displayDate !== sDate) mDate = false;
+        if (sMonth && (!item.displayDate || !item.displayDate.startsWith(sMonth))) mMonth = false;
+        if (sStatus !== "ALL" && item.status !== sStatus) mStatus = false;
+        return mDate && mMonth && mStatus;
+      });
+
+      renderTable(filtered);
+    }
+
+    function resetFilters() {
+      document.getElementById("filterDate").value = "";
+      document.getElementById("filterMonth").value = "";
+      document.getElementById("filterStatus").value = "ALL";
+      renderTable(allBookings);
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
